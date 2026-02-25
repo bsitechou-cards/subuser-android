@@ -1,18 +1,60 @@
 package com.app.walletcards.network
 
+import android.util.Log
+import com.app.walletcards.model.ApplyCardRequest
+import com.app.walletcards.model.ApplyCardResponse
 import com.app.walletcards.model.CardDetailsResponse
-import com.app.walletcards.model.ThreeDSResponse
 import com.app.walletcards.model.CardResponse
+import com.app.walletcards.model.ThreeDSResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.concurrent.TimeUnit
 
 object CardApiService {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .writeTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .build()
+
+    suspend fun applyForNewVirtualCard(applyCardRequest: ApplyCardRequest): ApplyCardResponse? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val jsonBody = Json.encodeToString(applyCardRequest)
+                Log.d("CardApiService", "applyForNewVirtualCard request: $jsonBody")
+
+                val requestBody =
+                    jsonBody.toRequestBody("application/json".toMediaType())
+
+                val request = Request.Builder()
+                    .url(ApiConfig.BASE_URL + "digitalnewvirtualcard")
+                    .post(requestBody)
+                    .addHeader("publickey", ApiConfig.PUBLIC_KEY)
+                    .addHeader("secretkey", ApiConfig.SECRET_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .build()
+
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string()
+                Log.d("CardApiService", "applyForNewVirtualCard response: $responseBody")
+
+                responseBody?.let {
+                    Json { ignoreUnknownKeys = true }
+                        .decodeFromString(ApplyCardResponse.serializer(), it)
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
+    }
 
     suspend fun getAllDigitalCards(userEmail: String): CardResponse? {
         return withContext(Dispatchers.IO) {

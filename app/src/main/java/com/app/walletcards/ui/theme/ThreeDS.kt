@@ -65,6 +65,8 @@ fun ThreeDSBottomSheet(response: ThreeDSResponse, cardId: String, userEmail: Str
                             val apiResponse = CardApiService.approve3ds(userEmail, cardId, it.eventId)
                             if (apiResponse?.isSuccessful == true) {
                                 Toast.makeText(context, "Transaction approved", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Approval failed. Please try again.", Toast.LENGTH_SHORT).show()
                             }
                         }
                         sheetState.hide()

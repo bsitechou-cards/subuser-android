@@ -82,8 +82,8 @@ fun CardDetailsScreen(
 
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-            } else {
-                val card = response?.data ?: return@Column
+            } else if (response?.data != null) {
+                val card = response!!.data!!
 
                 // Flippable card
                 FlippableCard(card = card)
@@ -107,9 +107,11 @@ fun CardDetailsScreen(
                     IconButton(onClick = { 
                         scope.launch {
                             val apiResponse = CardApiService.check3ds(userEmail, cardId)
-                            if (apiResponse?.code == "422") {
+                            if (apiResponse == null) {
+                                Toast.makeText(context, "An error occurred. Please try again.", Toast.LENGTH_SHORT).show()
+                            } else if (apiResponse.code == "422") {
                                 Toast.makeText(context, "No 3DS Request", Toast.LENGTH_SHORT).show()
-                            } else if (apiResponse?.code == "200") {
+                            } else if (apiResponse.code == "200") {
                                 threeDSResponse = apiResponse
                                 is3dsSheetOpen = true
                             }
@@ -189,6 +191,8 @@ fun CardDetailsScreen(
                         }
                     }
                 }
+            } else {
+                Text("Could not load card details.", modifier = Modifier.align(Alignment.CenterHorizontally))
             }
         }
 

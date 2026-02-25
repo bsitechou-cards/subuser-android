@@ -25,3 +25,4 @@ data class ThreeDSData(
     val updated_at: String,
     val deleted_at: String? = null
 )
+
