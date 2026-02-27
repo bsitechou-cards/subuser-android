@@ -7,6 +7,6 @@ data class CardResponse(
     val code: Int,
     val status: String,
     val message: String,
-    val data: List<CardItem>
+    val data: List<CardItem>,
+    val subuserfee: String? = null
 )
-

@@ -5,6 +5,7 @@ import com.app.walletcards.model.ApplyCardRequest
 import com.app.walletcards.model.ApplyCardResponse
 import com.app.walletcards.model.CardDetailsResponse
 import com.app.walletcards.model.CardResponse
+import com.app.walletcards.model.SubUser
 import com.app.walletcards.model.ThreeDSResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,17 +24,22 @@ object CardApiService {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    suspend fun applyForNewVirtualCard(applyCardRequest: ApplyCardRequest): ApplyCardResponse? {
+    private val json = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+    }
+
+    suspend fun subuseradd(subUser: SubUser): ApplyCardResponse? {
         return withContext(Dispatchers.IO) {
             try {
-                val jsonBody = Json.encodeToString(applyCardRequest)
-                Log.d("CardApiService", "applyForNewVirtualCard request: $jsonBody")
+                val jsonBody = json.encodeToString(subUser)
+                Log.d("CardApiService", "subuseradd request: $jsonBody")
 
                 val requestBody =
                     jsonBody.toRequestBody("application/json".toMediaType())
 
                 val request = Request.Builder()
-                    .url(ApiConfig.BASE_URL + "digitalnewvirtualcard")
+                    .url(ApiConfig.BASE_URL + "subuseradd")
                     .post(requestBody)
                     .addHeader("publickey", ApiConfig.PUBLIC_KEY)
                     .addHeader("secretkey", ApiConfig.SECRET_KEY)
@@ -42,11 +48,42 @@ object CardApiService {
 
                 val response = client.newCall(request).execute()
                 val responseBody = response.body?.string()
-                Log.d("CardApiService", "applyForNewVirtualCard response: $responseBody")
+                Log.d("CardApiService", "subuseradd response: $responseBody")
 
                 responseBody?.let {
-                    Json { ignoreUnknownKeys = true }
-                        .decodeFromString(ApplyCardResponse.serializer(), it)
+                    json.decodeFromString(ApplyCardResponse.serializer(), it)
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
+    }
+
+    suspend fun applyForNewVirtualCard(applyCardRequest: ApplyCardRequest): ApplyCardResponse? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val jsonBody = json.encodeToString(applyCardRequest)
+                Log.d("CardApiService", "applyForNewsubuserCard request: $jsonBody")
+
+                val requestBody =
+                    jsonBody.toRequestBody("application/json".toMediaType())
+
+                val request = Request.Builder()
+                    .url(ApiConfig.BASE_URL + "digitalnewsubusercard")
+                    .post(requestBody)
+                    .addHeader("publickey", ApiConfig.PUBLIC_KEY)
+                    .addHeader("secretkey", ApiConfig.SECRET_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .build()
+
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string()
+                Log.d("CardApiService", "applyForNewsubuserCard response: $responseBody")
+
+                responseBody?.let {
+                    json.decodeFromString(ApplyCardResponse.serializer(), it)
                 }
 
             } catch (e: Exception) {
@@ -69,7 +106,7 @@ object CardApiService {
                     jsonBody.toRequestBody("application/json".toMediaType())
 
                 val request = Request.Builder()
-                    .url(ApiConfig.BASE_URL + "getalldigital")
+                    .url(ApiConfig.BASE_URL + "getsubuseralldigital")
                     .post(requestBody)
                     .addHeader("publickey", ApiConfig.PUBLIC_KEY)
                     .addHeader("secretkey", ApiConfig.SECRET_KEY)
@@ -79,8 +116,7 @@ object CardApiService {
                 val response = client.newCall(request).execute()
 
                 response.body?.string()?.let {
-                    Json { ignoreUnknownKeys = true }
-                        .decodeFromString(CardResponse.serializer(), it)
+                    json.decodeFromString(CardResponse.serializer(), it)
                 }
 
             } catch (e: Exception) {
@@ -104,7 +140,7 @@ object CardApiService {
                     jsonBody.toRequestBody("application/json".toMediaType())
 
                 val request = Request.Builder()
-                    .url(ApiConfig.BASE_URL + "getdigitalcard")
+                    .url(ApiConfig.BASE_URL + "getsubuserdigitalcard")
                     .post(requestBody)
                     .addHeader("publickey", ApiConfig.PUBLIC_KEY)
                     .addHeader("secretkey", ApiConfig.SECRET_KEY)
@@ -114,8 +150,7 @@ object CardApiService {
                 val response = client.newCall(request).execute()
 
                 response.body?.string()?.let {
-                    Json { ignoreUnknownKeys = true }
-                        .decodeFromString(CardDetailsResponse.serializer(), it)
+                    json.decodeFromString(CardDetailsResponse.serializer(), it)
                 }
 
             } catch (e: Exception) {
@@ -139,7 +174,7 @@ object CardApiService {
                     jsonBody.toRequestBody("application/json".toMediaType())
 
                 val request = Request.Builder()
-                    .url(ApiConfig.BASE_URL + "check3ds")
+                    .url(ApiConfig.BASE_URL + "subusercheck3ds")
                     .post(requestBody)
                     .addHeader("publickey", ApiConfig.PUBLIC_KEY)
                     .addHeader("secretkey", ApiConfig.SECRET_KEY)
@@ -149,8 +184,7 @@ object CardApiService {
                 val response = client.newCall(request).execute()
 
                 response.body?.string()?.let {
-                    Json { ignoreUnknownKeys = true }
-                        .decodeFromString(ThreeDSResponse.serializer(), it)
+                    json.decodeFromString(ThreeDSResponse.serializer(), it)
                 }
 
             } catch (e: Exception) {
@@ -175,7 +209,7 @@ object CardApiService {
                     jsonBody.toRequestBody("application/json".toMediaType())
 
                 val request = Request.Builder()
-                    .url(ApiConfig.BASE_URL + "approve3ds")
+                    .url(ApiConfig.BASE_URL + "subuserapprove3ds")
                     .post(requestBody)
                     .addHeader("publickey", ApiConfig.PUBLIC_KEY)
                     .addHeader("secretkey", ApiConfig.SECRET_KEY)
@@ -183,6 +217,78 @@ object CardApiService {
                     .build()
 
                 client.newCall(request).execute()
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
+    }
+
+    suspend fun blockDigitalCard(email: String, cardId: String): ApplyCardResponse? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val jsonBody = """
+                {
+                    "useremail": "$email",
+                    "cardid": "$cardId"
+                }
+            """.trimIndent()
+
+                val requestBody =
+                    jsonBody.toRequestBody("application/json".toMediaType())
+
+                val request = Request.Builder()
+                    .url(ApiConfig.BASE_URL + "subuserblockdigital")
+                    .post(requestBody)
+                    .addHeader("publickey", ApiConfig.PUBLIC_KEY)
+                    .addHeader("secretkey", ApiConfig.SECRET_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .build()
+
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string()
+                Log.d("CardApiService", "blockDigitalCard response: $responseBody")
+
+                responseBody?.let {
+                    json.decodeFromString(ApplyCardResponse.serializer(), it)
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
+    }
+
+    suspend fun unblockDigitalCard(email: String, cardId: String): ApplyCardResponse? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val jsonBody = """
+                {
+                    "useremail": "$email",
+                    "cardid": "$cardId"
+                }
+            """.trimIndent()
+
+                val requestBody =
+                    jsonBody.toRequestBody("application/json".toMediaType())
+
+                val request = Request.Builder()
+                    .url(ApiConfig.BASE_URL + "subuserunblockdigital")
+                    .post(requestBody)
+                    .addHeader("publickey", ApiConfig.PUBLIC_KEY)
+                    .addHeader("secretkey", ApiConfig.SECRET_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .build()
+
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string()
+                Log.d("CardApiService", "unblockDigitalCard response: $responseBody")
+
+                responseBody?.let {
+                    json.decodeFromString(ApplyCardResponse.serializer(), it)
+                }
 
             } catch (e: Exception) {
                 e.printStackTrace()

@@ -18,7 +18,9 @@ data class CardDetails(
     val cvv: String,
     val nameoncard: String,
     val balance: Double,
+    val status: String,
     val transactions: TransactionsWrapper,
+    val deposits: List<Deposit>,
     val depositaddress: String? = null,
     val btcdepositaddress: String? = null,
     val ethdepositaddress: String? = null,
@@ -27,9 +29,14 @@ data class CardDetails(
     val bnbdepositaddress: String? = null,
     val xrpdepositaddress: String? = null,
     val paxgdepositaddress: String? = null
+)
 
-
-
+@Serializable
+data class Deposit(
+    val id: String,
+    val amount: Long,
+    val transactionHash: String,
+    val createdAt: String
 )
 
 @Serializable
