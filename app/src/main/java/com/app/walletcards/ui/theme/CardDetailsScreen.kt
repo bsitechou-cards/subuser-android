@@ -578,10 +578,16 @@ fun FlippableCard(card: CardDetails) {
                 Text(
                     "CVV: ${card.cvv}",
                     color = Color.White,
-                    fontSize = 20.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.align(Alignment.End)
                 )
+
+                // Billing Address
+                Column(modifier = Modifier.align(Alignment.Start)) {
+                    Text("Billing Address:", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("${card.address1 ?: ""}, ${card.city ?: ""}, ${card.state ?: ""}, ${"United Kingdom"}, ${card.postalCode ?: ""}", color = Color.White,fontSize = 16.sp,)
+                }
 
                 // Hologram placeholder
                 Box(
@@ -591,7 +597,7 @@ fun FlippableCard(card: CardDetails) {
                             Color.Gray.copy(alpha = 0.5f),
                             shape = RoundedCornerShape(12.dp)
                         )
-                        .align(Alignment.Start)
+                        .align(Alignment.End)
                 )
             }
         }

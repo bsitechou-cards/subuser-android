@@ -37,12 +37,12 @@ import com.google.zxing.qrcode.QRCodeWriter
 @Composable
 fun QrCodeScreen(
     depositAddress: String,
-    subuserFee: String,
+    subuserFee: Double,
     onClose: () -> Unit
 ) {
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
-    val payfee = (subuserFee.toDoubleOrNull() ?: 0.0) + 5
+    val payfee = subuserFee + 5
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
             IconButton(

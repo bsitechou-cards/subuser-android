@@ -73,10 +73,11 @@ fun RegisterScreen(
                     } else {
                         isLoading = true
                         auth.createUserWithEmailAndPassword(email, password)
-                            .addOnCompleteListener {
-                                if (it.isSuccessful) {
+                            .addOnCompleteListener { task ->
+                                if (task.isSuccessful) {
+                                    val firebaseUid = task.result?.user?.uid ?: ""
                                     scope.launch {
-                                        val response = CardApiService.subuseradd(SubUser(email, password))
+                                        val response = CardApiService.subuseradd(SubUser(email, password, firebaseUid))
                                         if (response?.status == "success") {
                                             Toast.makeText(context, response.message, Toast.LENGTH_SHORT).show()
                                             onRegisterSuccess()
@@ -86,7 +87,7 @@ fun RegisterScreen(
                                         isLoading = false
                                     }
                                 } else {
-                                    message = it.exception?.message ?: "Error"
+                                    message = task.exception?.message ?: "Error"
                                     isLoading = false
                                 }
                             }

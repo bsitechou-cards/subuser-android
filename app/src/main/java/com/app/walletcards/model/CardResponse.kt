@@ -8,5 +8,5 @@ data class CardResponse(
     val status: String,
     val message: String,
     val data: List<CardItem>,
-    val subuserfee: String? = null
+    val subuserfee: Double? = null
 )

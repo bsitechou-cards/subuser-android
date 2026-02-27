@@ -28,7 +28,12 @@ data class CardDetails(
     val soldepositaddress: String? = null,
     val bnbdepositaddress: String? = null,
     val xrpdepositaddress: String? = null,
-    val paxgdepositaddress: String? = null
+    val paxgdepositaddress: String? = null,
+    val address1: String? = null,
+    val city: String? = null,
+    val state: String? = null,
+    val country: String? = null,
+    val postalCode: String? = null
 )
 
 @Serializable

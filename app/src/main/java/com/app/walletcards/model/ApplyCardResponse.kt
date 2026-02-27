@@ -8,5 +8,5 @@ data class ApplyCardResponse(
     val status: String = "",
     val message: String = "",
     val depositaddress: String? = null,
-    val subuserfee: String? = null
+    val subuserfee: Double? = null
 )

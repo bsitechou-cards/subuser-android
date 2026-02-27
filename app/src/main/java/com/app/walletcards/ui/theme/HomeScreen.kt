@@ -94,7 +94,7 @@ fun HomeScreen(
     var isSheetOpen by remember { mutableStateOf(false) }
     var showQrCodeDialog by remember { mutableStateOf(false) }
     var depositAddress by remember { mutableStateOf<String?>(null) }
-    var subuserFee by remember { mutableStateOf<String?>(null) }
+    var subuserFee by remember { mutableStateOf<Double?>(null) }
 
 
     LaunchedEffect(refreshTrigger) {
@@ -194,7 +194,7 @@ fun HomeScreen(
         }, onShowQrCode = {
             isSheetOpen = false
             depositAddress = it.first
-            subuserFee = it.second
+            subuserFee = it.second.toDoubleOrNull()
             showQrCodeDialog = true
         })
     }
@@ -252,7 +252,8 @@ fun PaymentPendingCard(card: CardItem, onPayNowClick: () -> Unit) {
                 Text("Payment Pending", color = Color.White)
                 Button(
                     onClick = onPayNowClick,
-
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.MonetizationOn,
@@ -325,7 +326,7 @@ fun CardDesign(
         }
     }
 
-    // --- Card UI -- -
+    // --- Card UI ---
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -414,7 +415,7 @@ fun ApplyForCardBottomSheet(
         Locale.getISOCountries().map {
             val locale = Locale("", it)
             locale.displayCountry to it
-        }
+        }.sortedBy { it.first }
     }
     var state by remember { mutableStateOf("") }
     var countryCode by remember { mutableStateOf("") }
@@ -459,16 +460,19 @@ fun ApplyForCardBottomSheet(
                             .menuAnchor()
                             .fillMaxWidth(),
                         value = selectedCountryName,
-                        onValueChange = { },
+                        onValueChange = {
+                            selectedCountryName = it
+                            isCountryMenuExpanded = true
+                        },
                         label = { Text("Country") },
-                        readOnly = true,
+                        readOnly = false,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCountryMenuExpanded) }
                     )
                     ExposedDropdownMenu(
                         expanded = isCountryMenuExpanded,
                         onDismissRequest = { isCountryMenuExpanded = false }
                     ) {
-                        countries.forEach { (name, code) ->
+                        countries.filter { it.first.contains(selectedCountryName, ignoreCase = true) }.forEach { (name, code) ->
                             DropdownMenuItem(
                                 text = { Text(name) },
                                 onClick = {
@@ -512,7 +516,7 @@ fun ApplyForCardBottomSheet(
 
                             val response = CardApiService.applyForNewVirtualCard(request)
                             if (response?.status == "success" && response.depositaddress != null && response.subuserfee != null) {
-                                onShowQrCode(Pair(response.depositaddress, response.subuserfee))
+                                onShowQrCode(Pair(response.depositaddress, response.subuserfee.toString()))
                             } else if (response?.status == "success") {
                                 Toast.makeText(context, response.message, Toast.LENGTH_LONG).show()
                                 onCardApplied()
