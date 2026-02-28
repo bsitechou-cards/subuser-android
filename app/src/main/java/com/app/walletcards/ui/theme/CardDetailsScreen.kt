@@ -303,7 +303,7 @@ fun CardDetailsScreen(
             )
         }
 
-        // Overlayed top row: Title left, back button right
+        // Overlayed top row: Icon + Title left, back button right
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -312,10 +312,18 @@ fun CardDetailsScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Card Details",
-                style = MaterialTheme.typography.headlineMedium
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(id = R.mipmap.ic_launcher),
+                    contentDescription = "App Icon",
+                    modifier = Modifier.size(40.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Card Details",
+                    style = MaterialTheme.typography.headlineMedium
+                )
+            }
             IconButton(onClick = { navController.popBackStack() }) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_arrow_back),

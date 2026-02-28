@@ -9,6 +9,7 @@ import androidx.navigation.compose.*
 import com.app.walletcards.ui.theme.HomeScreen
 import com.app.walletcards.ui.theme.LoginScreen
 import com.app.walletcards.ui.theme.RegisterScreen
+import com.app.walletcards.ui.theme.SplashScreen
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.runtime.remember
@@ -40,12 +41,22 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                 // Navigation Host
                 NavHost(
                     navController = navController,
-                    startDestination = if (auth.currentUser != null) "home" else "login"
+                    startDestination = "splash"
                 ) {
+
+                    // Splash Screen
+                    composable("splash") {
+                        SplashScreen(onTimeout = {
+                            val destination = if (auth.currentUser != null) "home" else "login"
+                            navController.navigate(destination) {
+                                popUpTo("splash") { inclusive = true }
+                            }
+                        })
+                    }
 
                     // Login Screen
                     composable("login") {
-                        com.app.walletcards.ui.theme.LoginScreen(
+                        LoginScreen(
                             onLoginSuccess = {
                                 navController.navigate("home") {
                                     popUpTo("login") { inclusive = true }
@@ -59,7 +70,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
 
                     // Register Screen
                     composable("register") {
-                        com.app.walletcards.ui.theme.RegisterScreen(
+                        RegisterScreen(
                             onRegisterSuccess = {
                                 navController.navigate("home") {
                                     popUpTo("register") { inclusive = true }

@@ -1,80 +1,56 @@
 package com.app.walletcards.ui.theme
 
-import android.content.Context
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.RemoveRedEye
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.navigation.NavHostController
 import com.app.walletcards.R
 import com.app.walletcards.model.ApplyCardRequest
 import com.app.walletcards.model.CardItem
 import com.app.walletcards.model.CardResponse
+import com.app.walletcards.model.ChatMessage
 import com.app.walletcards.network.CardApiService
+import com.app.walletcards.util.countryCodes
 
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
@@ -88,7 +64,7 @@ fun HomeScreen(
 
     var cardResponse by remember { mutableStateOf<CardResponse?>(null) }
     var isLoading by remember { mutableStateOf(true) }
-    var refreshTrigger by remember { mutableStateOf(0) }
+    var refreshTrigger by remember { mutableIntStateOf(0) }
 
     val scope = rememberCoroutineScope()
     var isSheetOpen by remember { mutableStateOf(false) }
@@ -114,16 +90,24 @@ fun HomeScreen(
             .padding(24.dp)
     ) {
 
-        // Top Row: Wallet title + Logout icon
+        // Top Row: App Icon + Wallet title + Icons
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                "Wallet",
-                style = MaterialTheme.typography.headlineLarge
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(id = R.mipmap.ic_launcher),
+                    contentDescription = "App Icon",
+                    modifier = Modifier.size(40.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    "Wallet",
+                    style = MaterialTheme.typography.headlineLarge
+                )
+            }
 
             Row {
                 IconButton(onClick = { isSheetOpen = true }) {
@@ -286,20 +270,11 @@ fun CardDesign(
 ) {
     val context = LocalContext.current
 
-    // Launcher to trigger biometric auth
-    val launcher = rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
-            onViewClick()
-        }
-    }
-
     fun authenticateAndNavigate() {
-        val biometricManager = androidx.biometric.BiometricManager.from(context)
-        if (biometricManager.canAuthenticate(androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK or
-                    androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL) ==
-            androidx.biometric.BiometricManager.BIOMETRIC_SUCCESS
+        val biometricManager = BiometricManager.from(context)
+        if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK or
+                    BiometricManager.Authenticators.DEVICE_CREDENTIAL) ==
+            BiometricManager.BIOMETRIC_SUCCESS
         ) {
             val intent = BiometricPrompt.PromptInfo.Builder()
                 .setTitle("Biometric Login")
@@ -308,16 +283,13 @@ fun CardDesign(
                 .build()
             // Actually trigger prompt
             BiometricPrompt(
-                context as androidx.fragment.app.FragmentActivity,
+                context as FragmentActivity,
                 ContextCompat.getMainExecutor(context),
                 object : BiometricPrompt.AuthenticationCallback() {
                     override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                         super.onAuthenticationSucceeded(result)
                         onViewClick()
                     }
-
-                    override fun onAuthenticationFailed() { super.onAuthenticationFailed() }
-                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) { super.onAuthenticationError(errorCode, errString) }
                 }
             ).authenticate(intent)
         } else {
@@ -401,162 +373,357 @@ fun ApplyForCardBottomSheet(
     onShowQrCode: (Pair<String, String>) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var showDatePicker by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = System.currentTimeMillis())
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    var currentStep by remember { mutableIntStateOf(0) }
+    val messages = remember { mutableStateListOf<ChatMessage>() }
+    val listState = rememberLazyListState()
+
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
+    var dob by remember { mutableStateOf("") }
     var address1 by remember { mutableStateOf("") }
     var postalCode by remember { mutableStateOf("") }
     var city by remember { mutableStateOf("") }
     var country by remember { mutableStateOf("") }
-    var selectedCountryName by remember { mutableStateOf("") }
-    var isCountryMenuExpanded by remember { mutableStateOf(false) }
+    var state by remember { mutableStateOf("") }
+    var countryCode by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+
+    var inputValue by remember { mutableStateOf("") }
+    var isSubmitting by remember { mutableStateOf(false) }
+    var isBotTyping by remember { mutableStateOf(false) }
+
     val countries = remember {
         Locale.getISOCountries().map {
+            @Suppress("DEPRECATION")
             val locale = Locale("", it)
             locale.displayCountry to it
         }.sortedBy { it.first }
     }
-    var state by remember { mutableStateOf("") }
-    var countryCode by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var isSubmitting by remember { mutableStateOf(false) }
 
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
+    val steps = listOf(
+        "What is your first name?",
+        "What is your last name?",
+        "What is your date of birth?",
+        "What is your address?",
+        "What is your postal code?",
+        "What is your city?",
+        "What is your country?",
+        "What is your state?",
+        "What is your country phonecode?",
+        "What is your phone number?"
+    )
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, modifier = Modifier.fillMaxSize()) {
-        LazyColumn(modifier = Modifier.padding(16.dp)) {
-            item {
-                Text("Apply for a new card")
-                Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(value = userEmail, onValueChange = {}, readOnly = true, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = firstName, onValueChange = { firstName = it }, label = { Text("First Name") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = lastName, onValueChange = { lastName = it }, label = { Text("Last Name") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = datePickerState.selectedDateMillis?.let { "${Calendar.getInstance().apply { timeInMillis = it }.get(Calendar.DAY_OF_MONTH)}/${Calendar.getInstance().apply { timeInMillis = it }.get(Calendar.MONTH) + 1}/${Calendar.getInstance().apply { timeInMillis = it }.get(Calendar.YEAR)}" } ?: "",
-                    onValueChange = {},
-                    label = { Text("Date of Birth") },
-                    modifier = Modifier.fillMaxWidth(),
-                    readOnly = true,
-                    trailingIcon = { IconButton(onClick = { showDatePicker = true }) { Icon(painterResource(id = R.drawable.ic_calendar), contentDescription = null) } }
+    val fields = listOf(
+        "firstName", "lastName", "dob", "address1", "postalCode", "city", "country", "state", "countryCode", "phone"
+    )
+
+    LaunchedEffect(Unit) {
+        isBotTyping = true
+        delay(1500)
+        isBotTyping = false
+        messages.add(ChatMessage.Question(steps[0], fields[0]))
+    }
+
+    LaunchedEffect(messages.size, isBotTyping) {
+        if (messages.isNotEmpty() || isBotTyping) {
+            listState.animateScrollToItem(if (isBotTyping) messages.size else messages.size - 1)
+        }
+    }
+
+    val density = LocalDensity.current
+    val isKeyboardVisible = WindowInsets.ime.getBottom(density) > 0
+    LaunchedEffect(isKeyboardVisible) {
+        if (isKeyboardVisible && messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
+        }
+    }
+
+    fun handleNext(customValue: String? = null) {
+        val finalValue = customValue ?: inputValue
+        if (finalValue.isBlank() && currentStep != 6 && currentStep != 2 && currentStep != 8) return
+
+        val displayValue = when (currentStep) {
+            2 -> finalValue // dob
+            6 -> countries.find { it.second == finalValue }?.first ?: finalValue
+            8 -> "+$finalValue"
+            else -> finalValue
+        }
+
+        messages.add(ChatMessage.Answer(displayValue))
+        
+        when (currentStep) {
+            0 -> firstName = finalValue
+            1 -> lastName = finalValue
+            2 -> dob = finalValue
+            3 -> address1 = finalValue
+            4 -> postalCode = finalValue
+            5 -> city = finalValue
+            6 -> country = finalValue
+            7 -> state = finalValue
+            8 -> countryCode = finalValue
+            9 -> phone = finalValue
+        }
+
+        if (currentStep < steps.size - 1) {
+            scope.launch {
+                currentStep++
+                inputValue = ""
+                isBotTyping = true
+                delay(1500)
+                isBotTyping = false
+                messages.add(ChatMessage.Question(steps[currentStep], fields[currentStep]))
+            }
+        } else {
+            isSubmitting = true
+            keyboardController?.hide()
+            scope.launch {
+                val request = ApplyCardRequest(
+                    useremail = userEmail,
+                    firstname = firstName,
+                    lastname = lastName,
+                    dob = dob,
+                    address1 = address1,
+                    postalcode = postalCode,
+                    city = city,
+                    country = country,
+                    state = state,
+                    countrycode = countryCode,
+                    phone = phone
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = address1, onValueChange = { address1 = it }, label = { Text("Address") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = postalCode, onValueChange = { postalCode = it }, label = { Text("Postal Code") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = city, onValueChange = { city = it }, label = { Text("City") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(8.dp))
-                ExposedDropdownMenuBox(
-                    expanded = isCountryMenuExpanded,
-                    onExpandedChange = { isCountryMenuExpanded = !isCountryMenuExpanded }
-                ) {
-                    OutlinedTextField(
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth(),
-                        value = selectedCountryName,
-                        onValueChange = {
-                            selectedCountryName = it
-                            isCountryMenuExpanded = true
-                        },
-                        label = { Text("Country") },
-                        readOnly = false,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCountryMenuExpanded) }
-                    )
-                    ExposedDropdownMenu(
-                        expanded = isCountryMenuExpanded,
-                        onDismissRequest = { isCountryMenuExpanded = false }
-                    ) {
-                        countries.filter { it.first.contains(selectedCountryName, ignoreCase = true) }.forEach { (name, code) ->
-                            DropdownMenuItem(
-                                text = { Text(name) },
-                                onClick = {
-                                    country = code
-                                    selectedCountryName = name
-                                    isCountryMenuExpanded = false
-                                }
-                            )
-                        }
-                    }
+                val response = CardApiService.applyForNewVirtualCard(request)
+                if (response?.status == "success" && response.depositaddress != null && response.subuserfee != null) {
+                    onShowQrCode(Pair(response.depositaddress, response.subuserfee.toString()))
+                } else if (response?.status == "success") {
+                    Toast.makeText(context, response.message, Toast.LENGTH_LONG).show()
+                    onCardApplied()
+                } else {
+                    Toast.makeText(context, response?.message ?: "Failed", Toast.LENGTH_LONG).show()
+                    onDismiss()
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = state, onValueChange = { state = it }, label = { Text("State") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = countryCode, onValueChange = { countryCode = it }, label = { Text("Country Code") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Phone") }, modifier = Modifier.fillMaxWidth())
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = {
-                        isSubmitting = true
-                        scope.launch {
-                            val dob = datePickerState.selectedDateMillis?.let {
-                                val cal = Calendar.getInstance().apply { timeInMillis = it }
-                                "${cal.get(Calendar.YEAR)}-${String.format(Locale.US, "%02d", cal.get(Calendar.MONTH) + 1)}-${String.format(Locale.US, "%02d", cal.get(Calendar.DAY_OF_MONTH))}"
-                            } ?: ""
-
-                            val request = ApplyCardRequest(
-                                useremail = userEmail,
-                                firstname = firstName,
-                                lastname = lastName,
-                                dob = dob,
-                                address1 = address1,
-                                postalcode = postalCode,
-                                city = city,
-                                country = country,
-                                state = state,
-                                countrycode = countryCode,
-                                phone = phone
-                            )
-
-                            val response = CardApiService.applyForNewVirtualCard(request)
-                            if (response?.status == "success" && response.depositaddress != null && response.subuserfee != null) {
-                                onShowQrCode(Pair(response.depositaddress, response.subuserfee.toString()))
-                            } else if (response?.status == "success") {
-                                Toast.makeText(context, response.message, Toast.LENGTH_LONG).show()
-                                onCardApplied()
-                            } else if (response?.status == "failure") {
-                                Toast.makeText(context, response.message, Toast.LENGTH_LONG).show()
-                            } else {
-                                Toast.makeText(context, response?.message ?: "Application failed. Please try again.", Toast.LENGTH_LONG).show()
-                            }
-                            isSubmitting = false
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (isSubmitting) {
-                        Box(modifier = Modifier.size(24.dp)) {
-                            CircularProgressIndicator(color = Color.White)
-                        }
-                    } else {
-                        Text("Submit Application")
-                    }
-                }
+                isSubmitting = false
             }
         }
     }
 
-    if (showDatePicker) {
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("OK")
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        modifier = Modifier.fillMaxSize(),
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .imePadding()
+        ) {
+            Text(
+                "Apply for New Card",
+                modifier = Modifier.padding(16.dp),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(messages) { message ->
+                    when (message) {
+                        is ChatMessage.Question -> {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Start,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                BotAvatar()
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 12.dp)
+                                ) {
+                                    Text(
+                                        text = message.text,
+                                        modifier = Modifier.padding(12.dp),
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                }
+                            }
+                        }
+                        is ChatMessage.Answer -> {
+                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primary,
+                                    shape = RoundedCornerShape(12.dp, 12.dp, 0.dp, 12.dp)
+                                ) {
+                                    Text(
+                                        text = message.text,
+                                        modifier = Modifier.padding(12.dp),
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel")
+                
+                if (isBotTyping) {
+                    item {
+                        TypingIndicator()
+                    }
+                }
+
+                if (isSubmitting) {
+                    item {
+                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
                 }
             }
-        ) {
-            DatePicker(state = datePickerState)
+
+            // Input Area
+            if (!isSubmitting && !isBotTyping) {
+                Surface(tonalElevation = 2.dp, shadowElevation = 8.dp) {
+                    Box(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+                        when (currentStep) {
+                            2 -> { // DOB Step
+                                var showDatePicker by remember { mutableStateOf(false) }
+                                val datePickerState = rememberDatePickerState()
+                                
+                                OutlinedTextField(
+                                    value = dob,
+                                    onValueChange = {},
+                                    modifier = Modifier.fillMaxWidth(),
+                                    readOnly = true,
+                                    label = { Text("Select Date of Birth") },
+                                    trailingIcon = {
+                                        IconButton(onClick = { showDatePicker = true }) {
+                                            Icon(Icons.Default.CalendarMonth, contentDescription = null)
+                                        }
+                                    }
+                                )
+                                
+                                if (showDatePicker) {
+                                    DatePickerDialog(
+                                        onDismissRequest = { showDatePicker = false },
+                                        confirmButton = {
+                                            TextButton(onClick = {
+                                                datePickerState.selectedDateMillis?.let {
+                                                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                                                    val date = sdf.format(Date(it))
+                                                    dob = date
+                                                    handleNext(date)
+                                                }
+                                                showDatePicker = false
+                                            }) { Text("OK") }
+                                        },
+                                        dismissButton = {
+                                            TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+                                        }
+                                    ) {
+                                        DatePicker(state = datePickerState)
+                                    }
+                                }
+                            }
+                            6 -> { // Country Step
+                                var isCountryMenuExpanded by remember { mutableStateOf(false) }
+                                var countrySearchText by remember { mutableStateOf("") }
+
+                                ExposedDropdownMenuBox(
+                                    expanded = isCountryMenuExpanded,
+                                    onExpandedChange = { isCountryMenuExpanded = !isCountryMenuExpanded }
+                                ) {
+                                    OutlinedTextField(
+                                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable, true).fillMaxWidth(),
+                                        value = countrySearchText,
+                                        onValueChange = { countrySearchText = it; isCountryMenuExpanded = true },
+                                        label = { Text("Search Country") },
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCountryMenuExpanded) }
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = isCountryMenuExpanded,
+                                        onDismissRequest = { isCountryMenuExpanded = false }
+                                    ) {
+                                        countries.filter { it.first.contains(countrySearchText, ignoreCase = true) }.forEach { (name, code) ->
+                                            DropdownMenuItem(
+                                                text = { Text(name) },
+                                                onClick = {
+                                                    handleNext(code)
+                                                    isCountryMenuExpanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            8 -> { // Country Code Step
+                                var isCodeMenuExpanded by remember { mutableStateOf(false) }
+                                var codeSearchText by remember { mutableStateOf("") }
+
+                                ExposedDropdownMenuBox(
+                                    expanded = isCodeMenuExpanded,
+                                    onExpandedChange = { isCodeMenuExpanded = !isCodeMenuExpanded }
+                                ) {
+                                    OutlinedTextField(
+                                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable, true).fillMaxWidth(),
+                                        value = codeSearchText,
+                                        onValueChange = { codeSearchText = it; isCodeMenuExpanded = true },
+                                        label = { Text("Search Country Code") },
+                                        placeholder = { Text("e.g. United States or 1") },
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCodeMenuExpanded) }
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = isCodeMenuExpanded,
+                                        onDismissRequest = { isCodeMenuExpanded = false }
+                                    ) {
+                                        countryCodes.filter {
+                                            it.name.contains(codeSearchText, ignoreCase = true) ||
+                                                    it.code.contains(codeSearchText)
+                                        }.forEach { countryCodeItem ->
+                                            DropdownMenuItem(
+                                                text = { Text("${countryCodeItem.name} (+${countryCodeItem.code})") },
+                                                onClick = {
+                                                    handleNext(countryCodeItem.code)
+                                                    isCodeMenuExpanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            else -> {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    OutlinedTextField(
+                                        value = inputValue,
+                                        onValueChange = { inputValue = it },
+                                        modifier = Modifier.weight(1f),
+                                        placeholder = { Text("Type your answer...") },
+                                        shape = RoundedCornerShape(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    IconButton(
+                                        onClick = { handleNext() },
+                                        enabled = inputValue.isNotBlank(),
+                                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary)
+                                    ) {
+                                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Send", tint = Color.White)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
