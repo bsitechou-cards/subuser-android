@@ -6,6 +6,7 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.RemoveRedEye
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -323,8 +325,7 @@ fun CardDesign(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                    verticalAlignment = Alignment.CenterVertically) {
                     Text("Virtual Card", color = Color.White)
                     TextButton(onClick = { authenticateAndNavigate() }) {
                         Icon(
@@ -636,69 +637,81 @@ fun ApplyForCardBottomSheet(
                                 }
                             }
                             6 -> { // Country Step
-                                var isCountryMenuExpanded by remember { mutableStateOf(false) }
                                 var countrySearchText by remember { mutableStateOf("") }
+                                val filteredCountries = countries.filter { it.first.contains(countrySearchText, ignoreCase = true) }
 
-                                ExposedDropdownMenuBox(
-                                    expanded = isCountryMenuExpanded,
-                                    onExpandedChange = { isCountryMenuExpanded = !isCountryMenuExpanded }
-                                ) {
-                                    OutlinedTextField(
-                                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable, true).fillMaxWidth(),
-                                        value = countrySearchText,
-                                        onValueChange = { countrySearchText = it; isCountryMenuExpanded = true },
-                                        label = { Text("Search Country") },
-                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCountryMenuExpanded) }
-                                    )
-                                    ExposedDropdownMenu(
-                                        expanded = isCountryMenuExpanded,
-                                        onDismissRequest = { isCountryMenuExpanded = false }
-                                    ) {
-                                        countries.filter { it.first.contains(countrySearchText, ignoreCase = true) }.forEach { (name, code) ->
-                                            DropdownMenuItem(
-                                                text = { Text(name) },
-                                                onClick = {
-                                                    handleNext(code)
-                                                    isCountryMenuExpanded = false
+                                Column {
+                                    if (countrySearchText.isNotEmpty() && filteredCountries.isNotEmpty()) {
+                                        Surface(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(max = 200.dp)
+                                                .padding(bottom = 8.dp),
+                                            shape = RoundedCornerShape(12.dp),
+                                            tonalElevation = 8.dp,
+                                            shadowElevation = 4.dp
+                                        ) {
+                                            LazyColumn {
+                                                items(filteredCountries) { (name, code) ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(name) },
+                                                        onClick = {
+                                                            handleNext(code)
+                                                        }
+                                                    )
                                                 }
-                                            )
+                                            }
                                         }
                                     }
+                                    OutlinedTextField(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        value = countrySearchText,
+                                        onValueChange = { countrySearchText = it },
+                                        label = { Text("Search Country") },
+                                        trailingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                                        shape = RoundedCornerShape(24.dp)
+                                    )
                                 }
                             }
                             8 -> { // Country Code Step
-                                var isCodeMenuExpanded by remember { mutableStateOf(false) }
                                 var codeSearchText by remember { mutableStateOf("") }
+                                val filteredCodes = countryCodes.filter {
+                                    it.name.contains(codeSearchText, ignoreCase = true) ||
+                                            it.code.contains(codeSearchText)
+                                }
 
-                                ExposedDropdownMenuBox(
-                                    expanded = isCodeMenuExpanded,
-                                    onExpandedChange = { isCodeMenuExpanded = !isCodeMenuExpanded }
-                                ) {
-                                    OutlinedTextField(
-                                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable, true).fillMaxWidth(),
-                                        value = codeSearchText,
-                                        onValueChange = { codeSearchText = it; isCodeMenuExpanded = true },
-                                        label = { Text("Search Country Code") },
-                                        placeholder = { Text("e.g. United States or 1") },
-                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCodeMenuExpanded) }
-                                    )
-                                    ExposedDropdownMenu(
-                                        expanded = isCodeMenuExpanded,
-                                        onDismissRequest = { isCodeMenuExpanded = false }
-                                    ) {
-                                        countryCodes.filter {
-                                            it.name.contains(codeSearchText, ignoreCase = true) ||
-                                                    it.code.contains(codeSearchText)
-                                        }.forEach { countryCodeItem ->
-                                            DropdownMenuItem(
-                                                text = { Text("${countryCodeItem.name} (+${countryCodeItem.code})") },
-                                                onClick = {
-                                                    handleNext(countryCodeItem.code)
-                                                    isCodeMenuExpanded = false
+                                Column {
+                                    if (codeSearchText.isNotEmpty() && filteredCodes.isNotEmpty()) {
+                                        Surface(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(max = 200.dp)
+                                                .padding(bottom = 8.dp),
+                                            shape = RoundedCornerShape(12.dp),
+                                            tonalElevation = 8.dp,
+                                            shadowElevation = 4.dp
+                                        ) {
+                                            LazyColumn {
+                                                items(filteredCodes) { countryCodeItem ->
+                                                    DropdownMenuItem(
+                                                        text = { Text("${countryCodeItem.name} (+${countryCodeItem.code})") },
+                                                        onClick = {
+                                                            handleNext(countryCodeItem.code)
+                                                        }
+                                                    )
                                                 }
-                                            )
+                                            }
                                         }
                                     }
+                                    OutlinedTextField(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        value = codeSearchText,
+                                        onValueChange = { codeSearchText = it },
+                                        label = { Text("Search Country Code") },
+                                        placeholder = { Text("e.g. United States or 1") },
+                                        trailingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                                        shape = RoundedCornerShape(24.dp)
+                                    )
                                 }
                             }
                             else -> {
