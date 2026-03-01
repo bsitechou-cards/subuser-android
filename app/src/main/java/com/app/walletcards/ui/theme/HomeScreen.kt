@@ -92,7 +92,7 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp)
-            .navigationBarsPadding() // Added navigationBarsPadding for general protection
+            .navigationBarsPadding()
     ) {
 
         // Top Row: App Icon + Wallet title + Icons
@@ -140,14 +140,14 @@ fun HomeScreen(
                 val cards = cardResponse?.data ?: emptyList()
 
                 if (cards.isEmpty()) {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) { // Wrap in LazyColumn to enable pull-refresh on empty screen
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
                         item { EmptyCardDesign(onApplyClick = { isSheetOpen = true }) }
                     }
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
-                        contentPadding = PaddingValues(bottom = 80.dp) // Added bottom padding to ensure the last card isn't hidden
+                        contentPadding = PaddingValues(bottom = 80.dp)
                     ) {
                         items(cards) { card ->
                             if (card.cardid == null && card.paidcard == 0) {
@@ -410,20 +410,20 @@ fun ApplyForCardBottomSheet(
     }
 
     val steps = listOf(
-        "What is your first name?",
-        "What is your last name?",
+        "What will be the first name on the card?",
+        "What will be the last name on the card?",
         "What is your date of birth?",
-        "What is your address?",
-        "What is your postal code?",
-        "What is your city?",
-        "What is your country?",
-        "What is your state?",
         "What is your country phonecode?",
-        "What is your phone number?"
+        "What is your phone number?",
+        "What is your address?",
+        "What is your city?",
+        "What is your state?",
+        "What is your country?",
+        "What is your postal code?"
     )
 
     val fields = listOf(
-        "firstName", "lastName", "dob", "address1", "postalCode", "city", "country", "state", "countryCode", "phone"
+        "firstName", "lastName", "dob", "countryCode", "phone", "address1", "city", "state", "country", "postalCode"
     )
 
     LaunchedEffect(Unit) {
@@ -449,10 +449,10 @@ fun ApplyForCardBottomSheet(
 
     fun handleNext(customValue: String? = null) {
         val finalValue = customValue ?: inputValue
-        if (finalValue.isBlank() && currentStep != 6 && currentStep != 2 && currentStep != 8) return
+        if (finalValue.isBlank() && currentStep != 8 && currentStep != 2 && currentStep != 3) return
 
-        // Phone number validation
-        if (currentStep == 9) {
+        // Phone number validation (Step 4)
+        if (currentStep == 4) {
             if (!finalValue.all { it.isDigit() }) {
                 messages.add(ChatMessage.Answer(finalValue))
                 scope.launch {
@@ -468,8 +468,8 @@ fun ApplyForCardBottomSheet(
 
         val displayValue = when (currentStep) {
             2 -> finalValue // dob
-            6 -> countries.find { it.second == finalValue }?.first ?: finalValue
-            8 -> "+$finalValue"
+            3 -> "+$finalValue" // countryCode
+            8 -> countries.find { it.second == finalValue }?.first ?: finalValue // country
             else -> finalValue
         }
 
@@ -479,13 +479,13 @@ fun ApplyForCardBottomSheet(
             0 -> firstName = finalValue
             1 -> lastName = finalValue
             2 -> dob = finalValue
-            3 -> address1 = finalValue
-            4 -> postalCode = finalValue
-            5 -> city = finalValue
-            6 -> country = finalValue
+            3 -> countryCode = finalValue
+            4 -> phone = finalValue
+            5 -> address1 = finalValue
+            6 -> city = finalValue
             7 -> state = finalValue
-            8 -> countryCode = finalValue
-            9 -> phone = finalValue
+            8 -> country = finalValue
+            9 -> postalCode = finalValue
         }
 
         if (currentStep < steps.size - 1) {
@@ -498,9 +498,14 @@ fun ApplyForCardBottomSheet(
                 messages.add(ChatMessage.Question(steps[currentStep], fields[currentStep]))
             }
         } else {
-            isSubmitting = true
             keyboardController?.hide()
             scope.launch {
+                isBotTyping = true
+                delay(1000)
+                isBotTyping = false
+                messages.add(ChatMessage.Question("Thank you, I am going to apply the card for you now.", "done"))
+                delay(1500)
+                isSubmitting = true
                 val request = ApplyCardRequest(
                     useremail = userEmail,
                     firstname = firstName,
@@ -512,7 +517,7 @@ fun ApplyForCardBottomSheet(
                     country = country,
                     state = state,
                     countrycode = countryCode,
-                    phone = phone.filter { it.isDigit() } // Ensure only digits are sent
+                    phone = phone.filter { it.isDigit() }
                 )
                 val response = CardApiService.applyForNewVirtualCard(request)
                 if (response?.status == "success" && response.depositaddress != null && response.subuserfee != null) {
@@ -655,44 +660,7 @@ fun ApplyForCardBottomSheet(
                                     }
                                 }
                             }
-                            6 -> { // Country Step
-                                var countrySearchText by remember { mutableStateOf("") }
-                                val filteredCountries = countries.filter { it.first.contains(countrySearchText, ignoreCase = true) }
-
-                                Column {
-                                    if (countrySearchText.isNotEmpty() && filteredCountries.isNotEmpty()) {
-                                        Surface(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .heightIn(max = 200.dp)
-                                                .padding(bottom = 8.dp),
-                                            shape = RoundedCornerShape(12.dp),
-                                            tonalElevation = 8.dp,
-                                            shadowElevation = 4.dp
-                                        ) {
-                                            LazyColumn {
-                                                items(filteredCountries) { (name, code) ->
-                                                    DropdownMenuItem(
-                                                        text = { Text(name) },
-                                                        onClick = {
-                                                            handleNext(code)
-                                                        }
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                    OutlinedTextField(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        value = countrySearchText,
-                                        onValueChange = { countrySearchText = it },
-                                        label = { Text("Search Country") },
-                                        trailingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                                        shape = RoundedCornerShape(24.dp)
-                                    )
-                                }
-                            }
-                            8 -> { // Country Code Step
+                            3 -> { // Country Code Step
                                 var codeSearchText by remember { mutableStateOf("") }
                                 val filteredCodes = countryCodes.filter {
                                     it.name.contains(codeSearchText, ignoreCase = true) ||
@@ -734,6 +702,43 @@ fun ApplyForCardBottomSheet(
                                     )
                                 }
                             }
+                            8 -> { // Country Step
+                                var countrySearchText by remember { mutableStateOf("") }
+                                val filteredCountries = countries.filter { it.first.contains(countrySearchText, ignoreCase = true) }
+
+                                Column {
+                                    if (countrySearchText.isNotEmpty() && filteredCountries.isNotEmpty()) {
+                                        Surface(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(max = 200.dp)
+                                                .padding(bottom = 8.dp),
+                                            shape = RoundedCornerShape(12.dp),
+                                            tonalElevation = 8.dp,
+                                            shadowElevation = 4.dp
+                                        ) {
+                                            LazyColumn {
+                                                items(filteredCountries) { (name, code) ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(name) },
+                                                        onClick = {
+                                                            handleNext(code)
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                    OutlinedTextField(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        value = countrySearchText,
+                                        onValueChange = { countrySearchText = it },
+                                        label = { Text("Search Country") },
+                                        trailingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                                        shape = RoundedCornerShape(24.dp)
+                                    )
+                                }
+                            }
                             else -> {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     OutlinedTextField(
@@ -742,7 +747,7 @@ fun ApplyForCardBottomSheet(
                                         modifier = Modifier.weight(1f),
                                         placeholder = { Text("Type your answer...") },
                                         shape = RoundedCornerShape(24.dp),
-                                        keyboardOptions = if (currentStep == 9) KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default
+                                        keyboardOptions = if (currentStep == 4) KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     IconButton(
