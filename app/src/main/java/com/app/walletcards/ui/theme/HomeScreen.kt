@@ -92,6 +92,7 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(24.dp)
+            .navigationBarsPadding() // Added navigationBarsPadding for general protection
     ) {
 
         // Top Row: App Icon + Wallet title + Icons
@@ -145,7 +146,8 @@ fun HomeScreen(
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        contentPadding = PaddingValues(bottom = 80.dp) // Added bottom padding to ensure the last card isn't hidden
                     ) {
                         items(cards) { card ->
                             if (card.cardid == null && card.paidcard == 0) {
