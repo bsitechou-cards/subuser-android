@@ -353,13 +353,13 @@ fun CardDetailsScreen(
                             )
                         }
 
-                        item { DepositAddressRow("USDC", card.depositaddress?.removePrefix("USDC-POLYGON-")) }
+                        item { DepositAddressRow("USDC-POLYGON", card.depositaddress?.removePrefix("USDC-POLYGON-")) }
                         item { DepositAddressRow("BTC", card.btcdepositaddress?.removePrefix("BTC-")) }
                         item { DepositAddressRow("ETH", card.ethdepositaddress?.removePrefix("ETH-")) }
-                        item { DepositAddressRow("USDT", card.usdtdepositaddress?.removePrefix("USDT-BSC|BEP20-")) }
+                        item { DepositAddressRow("USDT-BSC|BEP20", card.usdtdepositaddress?.removePrefix("USDT-BSC|BEP20-")) }
                         item { DepositAddressRow("SOL", card.soldepositaddress?.removePrefix("SOL-")) }
-                        item { DepositAddressRow("BNB", card.bnbdepositaddress?.removePrefix("BNB-BSC-")) }
-                        item { DepositAddressRow("XRP", card.xrpdepositaddress?.removePrefix("XRP-BSC-")) }
+                        item { DepositAddressRow("BNB-BSC", card.bnbdepositaddress?.removePrefix("BNB-BSC-")) }
+                        item { DepositAddressRow("XRP-BSC", card.xrpdepositaddress?.removePrefix("XRP-BSC-")) }
                         item { DepositAddressRow("PAXG", card.paxgdepositaddress?.removePrefix("PAXG-")) }
 
                         item { Spacer(modifier = Modifier.height(16.dp)) }

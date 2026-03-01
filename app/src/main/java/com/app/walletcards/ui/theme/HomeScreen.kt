@@ -178,7 +178,7 @@ fun HomeScreen(
     }
 
     if (isSheetOpen) {
-        ApplyForCardBottomSheet(userEmail = userEmail, onDismiss = { isSheetOpen = false }, onCardApplied = {
+        ApplyForCardBottomSheet(userEmail = userEmail, subuserFee = cardResponse?.subuserfee ?: 0.0, onDismiss = { isSheetOpen = false }, onCardApplied = {
             isSheetOpen = false
             refreshTrigger++
         }, onShowQrCode = {
@@ -373,6 +373,7 @@ fun CardDesign(
 @Composable
 fun ApplyForCardBottomSheet(
     userEmail: String,
+    subuserFee: Double,
     onDismiss: () -> Unit,
     onCardApplied: () -> Unit,
     onShowQrCode: (Pair<String, String>) -> Unit
@@ -410,6 +411,7 @@ fun ApplyForCardBottomSheet(
     }
 
     val steps = listOf(
+        "There is a fee for new cards of $${subuserFee + 5} out of which $5 will remain as your card balance. Confirm to continue.",
         "What will be the first name on the card?",
         "What will be the last name on the card?",
         "What is your date of birth?",
@@ -423,7 +425,7 @@ fun ApplyForCardBottomSheet(
     )
 
     val fields = listOf(
-        "firstName", "lastName", "dob", "countryCode", "phone", "address1", "city", "state", "country", "postalCode"
+        "feeConfirmation", "firstName", "lastName", "dob", "countryCode", "phone", "address1", "city", "state", "country", "postalCode"
     )
 
     LaunchedEffect(Unit) {
@@ -449,10 +451,10 @@ fun ApplyForCardBottomSheet(
 
     fun handleNext(customValue: String? = null) {
         val finalValue = customValue ?: inputValue
-        if (finalValue.isBlank() && currentStep != 8 && currentStep != 2 && currentStep != 3) return
+        if (finalValue.isBlank() && currentStep != 9 && currentStep != 3 && currentStep != 4 && currentStep != 0) return
 
-        // Phone number validation (Step 4)
-        if (currentStep == 4) {
+        // Phone number validation (Step 5)
+        if (currentStep == 5) {
             if (!finalValue.all { it.isDigit() }) {
                 messages.add(ChatMessage.Answer(finalValue))
                 scope.launch {
@@ -467,25 +469,26 @@ fun ApplyForCardBottomSheet(
         }
 
         val displayValue = when (currentStep) {
-            2 -> finalValue // dob
-            3 -> "+$finalValue" // countryCode
-            8 -> countries.find { it.second == finalValue }?.first ?: finalValue // country
+            0 -> "Confirmed"
+            3 -> finalValue // dob
+            4 -> "+$finalValue" // countryCode
+            9 -> countries.find { it.second == finalValue }?.first ?: finalValue // country
             else -> finalValue
         }
 
         messages.add(ChatMessage.Answer(displayValue))
         
         when (currentStep) {
-            0 -> firstName = finalValue
-            1 -> lastName = finalValue
-            2 -> dob = finalValue
-            3 -> countryCode = finalValue
-            4 -> phone = finalValue
-            5 -> address1 = finalValue
-            6 -> city = finalValue
-            7 -> state = finalValue
-            8 -> country = finalValue
-            9 -> postalCode = finalValue
+            1 -> firstName = finalValue
+            2 -> lastName = finalValue
+            3 -> dob = finalValue
+            4 -> countryCode = finalValue
+            5 -> phone = finalValue
+            6 -> address1 = finalValue
+            7 -> city = finalValue
+            8 -> state = finalValue
+            9 -> country = finalValue
+            10 -> postalCode = finalValue
         }
 
         if (currentStep < steps.size - 1) {
@@ -621,7 +624,17 @@ fun ApplyForCardBottomSheet(
                 Surface(tonalElevation = 2.dp, shadowElevation = 8.dp) {
                     Box(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
                         when (currentStep) {
-                            2 -> { // DOB Step
+                            0 -> { // Fee Confirmation Step
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(onClick = onDismiss, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)) {
+                                        Text("Cancel")
+                                    }
+                                    Button(onClick = { handleNext("apply") }, modifier = Modifier.weight(1f)) {
+                                        Text("Apply")
+                                    }
+                                }
+                            }
+                            3 -> { // DOB Step
                                 var showDatePicker by remember { mutableStateOf(false) }
                                 val datePickerState = rememberDatePickerState()
                                 
@@ -660,7 +673,7 @@ fun ApplyForCardBottomSheet(
                                     }
                                 }
                             }
-                            3 -> { // Country Code Step
+                            4 -> { // Country Code Step
                                 var codeSearchText by remember { mutableStateOf("") }
                                 val filteredCodes = countryCodes.filter {
                                     it.name.contains(codeSearchText, ignoreCase = true) ||
@@ -702,7 +715,7 @@ fun ApplyForCardBottomSheet(
                                     )
                                 }
                             }
-                            8 -> { // Country Step
+                            9 -> { // Country Step
                                 var countrySearchText by remember { mutableStateOf("") }
                                 val filteredCountries = countries.filter { it.first.contains(countrySearchText, ignoreCase = true) }
 
@@ -747,7 +760,7 @@ fun ApplyForCardBottomSheet(
                                         modifier = Modifier.weight(1f),
                                         placeholder = { Text("Type your answer...") },
                                         shape = RoundedCornerShape(24.dp),
-                                        keyboardOptions = if (currentStep == 4) KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default
+                                        keyboardOptions = if (currentStep == 5) KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     IconButton(
