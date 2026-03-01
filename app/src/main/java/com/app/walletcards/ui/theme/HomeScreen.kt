@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -34,6 +35,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -447,6 +449,21 @@ fun ApplyForCardBottomSheet(
         val finalValue = customValue ?: inputValue
         if (finalValue.isBlank() && currentStep != 6 && currentStep != 2 && currentStep != 8) return
 
+        // Phone number validation
+        if (currentStep == 9) {
+            if (!finalValue.all { it.isDigit() }) {
+                messages.add(ChatMessage.Answer(finalValue))
+                scope.launch {
+                    inputValue = ""
+                    isBotTyping = true
+                    delay(1000)
+                    isBotTyping = false
+                    messages.add(ChatMessage.Question("Invalid input. The phone number should not include any spaces or special characters. Please re-enter your phone number.", fields[currentStep]))
+                }
+                return
+            }
+        }
+
         val displayValue = when (currentStep) {
             2 -> finalValue // dob
             6 -> countries.find { it.second == finalValue }?.first ?: finalValue
@@ -493,7 +510,7 @@ fun ApplyForCardBottomSheet(
                     country = country,
                     state = state,
                     countrycode = countryCode,
-                    phone = phone
+                    phone = phone.filter { it.isDigit() } // Ensure only digits are sent
                 )
                 val response = CardApiService.applyForNewVirtualCard(request)
                 if (response?.status == "success" && response.depositaddress != null && response.subuserfee != null) {
@@ -710,7 +727,8 @@ fun ApplyForCardBottomSheet(
                                         label = { Text("Search Country Code") },
                                         placeholder = { Text("e.g. United States or 1") },
                                         trailingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                                        shape = RoundedCornerShape(24.dp)
+                                        shape = RoundedCornerShape(24.dp),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                                     )
                                 }
                             }
@@ -721,7 +739,8 @@ fun ApplyForCardBottomSheet(
                                         onValueChange = { inputValue = it },
                                         modifier = Modifier.weight(1f),
                                         placeholder = { Text("Type your answer...") },
-                                        shape = RoundedCornerShape(24.dp)
+                                        shape = RoundedCornerShape(24.dp),
+                                        keyboardOptions = if (currentStep == 9) KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     IconButton(
