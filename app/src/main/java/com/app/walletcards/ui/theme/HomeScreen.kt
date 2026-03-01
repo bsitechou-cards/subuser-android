@@ -4,6 +4,12 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,6 +34,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -142,7 +149,12 @@ fun HomeScreen(
 
         Box(Modifier.pullRefresh(pullRefreshState)) {
             if (isLoading && cardResponse == null) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                // Shimmer Loading Effect
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    repeat(3) {
+                        ShimmerCardItem()
+                    }
+                }
             } else {
                 val cards = cardResponse?.data ?: emptyList()
 
@@ -217,6 +229,42 @@ fun HomeScreen(
             )
         }
     }
+}
+
+@Composable
+fun ShimmerCardItem() {
+    val shimmerColors = listOf(
+        Color.LightGray.copy(alpha = 0.6f),
+        Color.LightGray.copy(alpha = 0.2f),
+        Color.LightGray.copy(alpha = 0.6f),
+    )
+
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val translateAnim = transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 1000,
+                easing = LinearEasing
+            ),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer"
+    )
+
+    val brush = Brush.linearGradient(
+        colors = shimmerColors,
+        start = Offset.Zero,
+        end = Offset(x = translateAnim.value, y = translateAnim.value)
+    )
+
+    Spacer(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+            .background(brush, shape = RoundedCornerShape(16.dp))
+    )
 }
 
 @Composable
@@ -413,6 +461,10 @@ fun ApplyForCardBottomSheet(
     var inputValue by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
     var isBotTyping by remember { mutableStateOf(false) }
+
+    // Re-use objects via remember
+    val dateFormatter = remember { SimpleDateFormat("yyyy-MM-dd", Locale.US) }
+    val defaultLocale = remember { Locale.US }
 
     // Step-specific states moved to top level to persist during recomposition
     var showDatePicker by remember { mutableStateOf(false) }
@@ -677,8 +729,7 @@ fun ApplyForCardBottomSheet(
                                         confirmButton = {
                                             TextButton(onClick = {
                                                 datePickerState.selectedDateMillis?.let {
-                                                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-                                                    val date = sdf.format(Date(it))
+                                                    val date = dateFormatter.format(Date(it))
                                                     dob = date
                                                     handleNext(date)
                                                 }
