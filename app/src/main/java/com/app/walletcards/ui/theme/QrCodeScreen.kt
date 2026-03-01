@@ -1,38 +1,36 @@
 package com.app.walletcards.ui.theme
 
 import android.graphics.Bitmap
-import android.graphics.Color
-import android.widget.Toast
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.google.zxing.BarcodeFormat
-import com.google.zxing.WriterException
 import com.google.zxing.qrcode.QRCodeWriter
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun QrCodeScreen(
@@ -41,98 +39,197 @@ fun QrCodeScreen(
     onClose: () -> Unit
 ) {
     val clipboardManager = LocalClipboardManager.current
-    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val payfee = subuserFee + 5
-    Surface(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            IconButton(
-                onClick = onClose,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
+    var isCopied by remember { mutableStateOf(false) }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = Color.White
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Close, contentDescription = "Close")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Payments,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        "Card Payment",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Default.Close, contentDescription = "Close")
+                }
             }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Amount Section
+            Text(
+                "Total Amount to Pay",
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.Gray
+            )
+            Text(
+                "$$payfee",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                fontSize = 42.sp
+            )
+            Surface(
+                color = Color(0xFFE8F5E9),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.padding(top = 8.dp)
             ) {
                 Text(
-                    text = "$$payfee",
-                    style = MaterialTheme.typography.headlineLarge
+                    "USDC-POLYGON Network",
+                    color = Color(0xFF2E7D32),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
+            }
 
-                Text(
-                    text = "Pay USDC-POLYGON",
-                    style = MaterialTheme.typography.headlineSmall
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-                val qrCodeBitmap = try {
-                    generateQrCode(depositAddress)
-                } catch (e: WriterException) {
-                    e.printStackTrace()
-                    null
-                }
-
-                qrCodeBitmap?.let {
-                    Image(
-                        bitmap = it.asImageBitmap(),
-                        contentDescription = "QR Code",
-                        modifier = Modifier.size(200.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+            // QR Code Section
+            Card(
+                modifier = Modifier
+                    .size(240.dp)
+                    .shadow(8.dp, RoundedCornerShape(24.dp)),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(text = depositAddress)
-
+                    val qrCodeBitmap = remember(depositAddress) { generateQrCode(depositAddress) }
+                    qrCodeBitmap?.let {
+                        Image(
+                            bitmap = it.asImageBitmap(),
+                            contentDescription = "QR Code",
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
-                IconButton(onClick = {
-                    clipboardManager.setText(AnnotatedString(depositAddress))
-                    Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
-                }) {
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Address Section
+            Text(
+                "Deposit Address",
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.Gray,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Start
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        clipboardManager.setText(AnnotatedString(depositAddress))
+                        isCopied = true
+                        scope.launch {
+                            delay(2000)
+                            isCopied = false
+                        }
+                    },
+                color = Color(0xFFF5F5F5),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = depositAddress,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
                     Icon(
-                        imageVector = Icons.Default.ContentCopy,
-                        contentDescription = "Copy Address",
-                        tint = androidx.compose.ui.graphics.Color.Black
+                        imageVector = if (isCopied) Icons.Default.Check else Icons.Default.ContentCopy,
+                        contentDescription = "Copy",
+                        tint = if (isCopied) Color(0xFF34A853) else Color.Gray,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Warning
+            Surface(
+                color = Color(0xFFFFEBEE),
+                shape = RoundedCornerShape(12.dp)
+            ) {
                 Text(
-                    text = "Kindly pay the exact amount only, lower amounts may cause you to loose the transfer. $5.00 will remain as balance on your card.",
+                    text = "Kindly pay the exact amount only. Lower amounts may cause loss of funds. $5.00 will remain as your initial card balance.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = androidx.compose.ui.graphics.Color.Red
-
+                    color = Color(0xFFC62828),
+                    modifier = Modifier.padding(16.dp),
+                    textAlign = TextAlign.Center
                 )
+            }
 
-                Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
-                Button(onClick = onClose) {
-                    Text(text = "Paid")
-                }
+            Button(
+                onClick = onClose,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text("I Have Paid", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         }
     }
 }
 
 private fun generateQrCode(text: String): Bitmap? {
-    val writer = QRCodeWriter()
-    val bitMatrix = writer.encode(text, BarcodeFormat.QR_CODE, 512, 512)
-    val width = bitMatrix.width
-    val height = bitMatrix.height
-    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
-    for (x in 0 until width) {
-        for (y in 0 until height) {
-            bitmap.setPixel(x, y, if (bitMatrix[x, y]) Color.BLACK else Color.WHITE)
+    return try {
+        val writer = QRCodeWriter()
+        val bitMatrix = writer.encode(text, BarcodeFormat.QR_CODE, 512, 512)
+        val width = bitMatrix.width
+        val height = bitMatrix.height
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
+        for (x in 0 until width) {
+            for (y in 0 until height) {
+                bitmap.setPixel(x, y, if (bitMatrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+            }
         }
+        bitmap
+    } catch (e: Exception) {
+        null
     }
-    return bitmap
 }

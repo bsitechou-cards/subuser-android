@@ -1,6 +1,8 @@
 package com.app.walletcards.ui.theme
 
+import android.graphics.Bitmap
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -11,22 +13,29 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -43,9 +52,14 @@ import com.app.walletcards.model.CardDetails
 import com.app.walletcards.model.CardDetailsResponse
 import com.app.walletcards.model.Deposit
 import com.app.walletcards.model.ThreeDSResponse
+import com.app.walletcards.model.TransactionItem
 import com.app.walletcards.network.CardApiService
 import com.google.firebase.auth.FirebaseAuth
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -65,10 +79,10 @@ fun CardDetailsScreen(
     var isLoading by remember { mutableStateOf(true) }
     var isChecking3ds by remember { mutableStateOf(false) }
     var isTogglingBlock by remember { mutableStateOf(false) }
-    var refreshTrigger by remember { mutableStateOf(0) }
+    var refreshTrigger by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
 
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var isSheetOpen by remember { mutableStateOf(false) }
     var is3dsSheetOpen by remember { mutableStateOf(false) }
 
@@ -86,248 +100,230 @@ fun CardDetailsScreen(
     val isRefreshing = isLoading && response != null
     val pullRefreshState = rememberPullRefreshState(refreshing = isRefreshing, onRefresh = { refreshTrigger++ })
 
-    Box(modifier = Modifier.fillMaxSize()) {
-
-        Box(Modifier.pullRefresh(pullRefreshState)) {
-            Column(
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8F9FA))
+            .navigationBarsPadding()
+    ) {
+        // Top Row Header: Identical to HomeScreen styling
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color.White,
+            shadowElevation = 2.dp
+        ) {
+            Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp)
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-
-                Spacer(modifier = Modifier.height(48.dp)) // space for overlay top row
-
-                if (isLoading && response == null) {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-                } else if (response?.data != null) {
-                    val card = response!!.data!!
-
-                    // Flippable card
-                    FlippableCard(card = card)
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    // Balance and actions
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Balance: $${"%.2f".format(card.balance)}",
-                            style = MaterialTheme.typography.headlineSmall,
-                        )
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            IconButton(onClick = { isSheetOpen = true }) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = "Show deposit addresses"
-                                )
-                            }
-
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)) {
-                                if (isChecking3ds) {
-                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                                } else {
-                                    IconButton(onClick = {
-                                        scope.launch {
-                                            isChecking3ds = true
-                                            try {
-                                                val apiResponse = CardApiService.check3ds(userEmail, cardId)
-                                                if (apiResponse == null) {
-                                                    Toast.makeText(context, "An error occurred. Please try again.", Toast.LENGTH_SHORT).show()
-                                                } else if (apiResponse.code == "422") {
-                                                    Toast.makeText(context, "No 3DS Request", Toast.LENGTH_SHORT).show()
-                                                } else if (apiResponse.code == "200") {
-                                                    threeDSResponse = apiResponse
-                                                    is3dsSheetOpen = true
-                                                }
-                                            } finally {
-                                                isChecking3ds = false
-                                            }
-                                        }
-                                    }) {
-                                        Icon(
-                                            imageVector = Icons.Default.Shield,
-                                            contentDescription = "3DS"
-                                        )
-                                    }
-                                }
-                            }
-
-                            Switch(
-                                checked = card.status == "active",
-                                onCheckedChange = {
-                                    scope.launch {
-                                        isTogglingBlock = true
-                                        try {
-                                            val apiResponse = if (card.status == "active") {
-                                                CardApiService.blockDigitalCard(userEmail, cardId)
-                                            } else {
-                                                CardApiService.unblockDigitalCard(userEmail, cardId)
-                                            }
-                                            if (apiResponse != null) {
-                                                Toast.makeText(context, apiResponse.message, Toast.LENGTH_SHORT).show()
-                                                refreshTrigger++
-                                            } else {
-                                                Toast.makeText(context, "An error occurred. Please try again.", Toast.LENGTH_SHORT).show()
-                                            }
-                                        } finally {
-                                            isTogglingBlock = false
-                                        }
-                                    }
-                                },
-                                thumbContent = if (isTogglingBlock) {
-                                    {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(16.dp),
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            strokeWidth = 2.dp
-                                        )
-                                    }
-                                } else {
-                                    null
-                                },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color(0xFF006400)
-                                )
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    val tabTitles = listOf("Transactions", "Deposits")
-                    val pagerState = rememberPagerState { tabTitles.size }
-
-                    Column {
-                        TabRow(selectedTabIndex = pagerState.currentPage) {
-                            tabTitles.forEachIndexed { index, title ->
-                                Tab(
-                                    selected = pagerState.currentPage == index,
-                                    onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                                    text = { Text(title) }
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        HorizontalPager(state = pagerState) {
-                            when (it) {
-                                0 -> {
-                                    // Transactions List
-                                    LazyColumn(
-                                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        items(card.transactions.response.items) { transaction ->
-                                            val isPayment = transaction.type.lowercase() == "payment"
-                                            val amountColor = if (isPayment) Color(0xFFEA4335) else Color(0xFF34A853)
-                                            val iconRes = if (isPayment) R.drawable.ic_arrow_up else R.drawable.ic_arrow_down
-
-                                            Card(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .shadow(2.dp, RoundedCornerShape(12.dp)),
-                                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9))
-                                            ) {
-                                                Row(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .padding(16.dp),
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Image(
-                                                        painter = painterResource(id = iconRes),
-                                                        contentDescription = transaction.type,
-                                                        modifier = Modifier.size(36.dp)
-                                                    )
-
-                                                    Spacer(modifier = Modifier.width(12.dp))
-
-                                                    Column(modifier = Modifier.weight(1f)) {
-                                                        Text(
-                                                            text = transaction.merchant.name,
-                                                            fontWeight = FontWeight.SemiBold,
-                                                            color = Color.Black
-                                                        )
-                                                        val rawDate = transaction.paymentDateTime // e.g., "2026-02-24T08:15:00Z"
-                                                        val formattedDate = try {
-                                                            val parsed = ZonedDateTime.parse(rawDate)
-                                                            parsed.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(Locale.getDefault()))
-                                                        } catch (e: Exception) {
-                                                            rawDate // fallback if parsing fails
-                                                        }
-                                                        Text(
-                                                            text = formattedDate,
-                                                            fontSize = 12.sp,
-                                                            color = Color.Gray
-                                                        )
-                                                    }
-
-                                                    Text(
-                                                        text = if (isPayment) "-$${"%.2f".format(transaction.amount)}" else "+$${"%.2f".format(transaction.amount)}",
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = amountColor
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                1 -> {
-                                    // Deposits List
-                                    LazyColumn(
-                                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        items(card.deposits) { deposit ->
-                                            DepositItemRow(deposit = deposit)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    Text("Could not load card details.", modifier = Modifier.align(Alignment.CenterHorizontally))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Image(
+                        painter = painterResource(id = R.mipmap.ic_launcher),
+                        contentDescription = "App Icon",
+                        modifier = Modifier.size(36.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Card Details",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
+
+                // Professional Back Button: Styled like HomeScreen utility buttons
+                QuickActionItem(
+                    icon = Icons.AutoMirrored.Filled.ArrowBack,
+                    label = "Back",
+                    size = 40.dp,
+                    onClick = { navController.popBackStack() }
+                )
             }
-            PullRefreshIndicator(
-                refreshing = isRefreshing,
-                state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
         }
 
-        // Overlayed top row: Icon + Title left, back button right
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp)
-                .align(Alignment.TopCenter),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(
-                    painter = painterResource(id = R.mipmap.ic_launcher),
-                    contentDescription = "App Icon",
-                    modifier = Modifier.size(40.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Card Details",
-                    style = MaterialTheme.typography.headlineMedium
-                )
-            }
-            IconButton(onClick = { navController.popBackStack() }) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_arrow_back),
-                    contentDescription = "Back"
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(Modifier.pullRefresh(pullRefreshState)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp)
+                ) {
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    if (isLoading && response == null) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                    } else if (response?.data != null) {
+                        val card = response!!.data!!
+
+                        // Flippable card
+                        FlippableCard(card = card)
+
+                        Spacer(modifier = Modifier.height(32.dp))
+
+                        // Balance and actions
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Current Balance",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = Color.Gray
+                                )
+                                Text(
+                                    text = "$${"%.2f".format(card.balance)}",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                IconButton(onClick = { isSheetOpen = true }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Show deposit addresses"
+                                    )
+                                }
+
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)) {
+                                    if (isChecking3ds) {
+                                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                    } else {
+                                        IconButton(onClick = {
+                                            scope.launch {
+                                                isChecking3ds = true
+                                                try {
+                                                    val apiResponse = CardApiService.check3ds(userEmail, cardId)
+                                                    if (apiResponse == null) {
+                                                        Toast.makeText(context, "An error occurred. Please try again.", Toast.LENGTH_SHORT).show()
+                                                    } else if (apiResponse.code == "422") {
+                                                        Toast.makeText(context, "No 3DS Request", Toast.LENGTH_SHORT).show()
+                                                    } else if (apiResponse.code == "200") {
+                                                        threeDSResponse = apiResponse
+                                                        is3dsSheetOpen = true
+                                                    }
+                                                } finally {
+                                                    isChecking3ds = false
+                                                }
+                                            }
+                                        }) {
+                                            Icon(
+                                                imageVector = Icons.Default.Shield,
+                                                contentDescription = "3DS"
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Switch(
+                                    checked = card.status == "active",
+                                    onCheckedChange = {
+                                        scope.launch {
+                                            isTogglingBlock = true
+                                            try {
+                                                val apiResponse = if (card.status == "active") {
+                                                    CardApiService.blockDigitalCard(userEmail, cardId)
+                                                } else {
+                                                    CardApiService.unblockDigitalCard(userEmail, cardId)
+                                                }
+                                                if (apiResponse != null) {
+                                                    Toast.makeText(context, apiResponse.message, Toast.LENGTH_SHORT).show()
+                                                    refreshTrigger++
+                                                } else {
+                                                    Toast.makeText(context, "An error occurred. Please try again.", Toast.LENGTH_SHORT).show()
+                                                }
+                                            } finally {
+                                                isTogglingBlock = false
+                                            }
+                                        }
+                                    },
+                                    thumbContent = if (isTogglingBlock) {
+                                        {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(16.dp),
+                                                color = MaterialTheme.colorScheme.onPrimary,
+                                                strokeWidth = 2.dp
+                                            )
+                                        }
+                                    } else {
+                                        null
+                                    },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color(0xFF006400)
+                                    )
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        val tabTitles = listOf("Transactions", "Deposits")
+                        val pagerState = rememberPagerState { tabTitles.size }
+
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            TabRow(
+                                selectedTabIndex = pagerState.currentPage,
+                                containerColor = Color.Transparent,
+                                divider = {},
+                                indicator = { tabPositions ->
+                                    TabRowDefaults.SecondaryIndicator(
+                                        Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            ) {
+                                tabTitles.forEachIndexed { index, title ->
+                                    Tab(
+                                        selected = pagerState.currentPage == index,
+                                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                                        text = { 
+                                            Text(
+                                                title,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Normal
+                                            ) 
+                                        }
+                                    )
+                                }
+                            }
+
+                            HorizontalPager(
+                                state = pagerState,
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.Top
+                            ) { pageIndex ->
+                                when (pageIndex) {
+                                    0 -> {
+                                        val groupedTransactions = remember(card.transactions.response.items) {
+                                            groupItemsByDate(card.transactions.response.items) { it.paymentDateTime }
+                                        }
+                                        TransactionList(groupedTransactions)
+                                    }
+                                    1 -> {
+                                        val groupedDeposits = remember(card.deposits) {
+                                            groupItemsByDate(card.deposits) { it.createdAt }
+                                        }
+                                        DepositList(groupedDeposits)
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Text("Could not load card details.", modifier = Modifier.align(Alignment.CenterHorizontally))
+                    }
+                }
+                PullRefreshIndicator(
+                    refreshing = isRefreshing,
+                    state = pullRefreshState,
+                    modifier = Modifier.align(Alignment.TopCenter)
                 )
             }
         }
@@ -336,33 +332,42 @@ fun CardDetailsScreen(
             ModalBottomSheet(
                 onDismissRequest = { isSheetOpen = false },
                 sheetState = sheetState,
+                containerColor = Color.White
             ) {
                 response?.data?.let { card ->
-                    LazyColumn(
-                        modifier = Modifier.navigationBarsPadding(),
-                        contentPadding = PaddingValues(horizontal = 16.dp)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(bottom = 32.dp)
                     ) {
-                        item { 
-                            Text(
-                                "Deposit Addresses",
-                                style = MaterialTheme.typography.headlineMedium,
-                                modifier = Modifier
-                                    .padding(vertical = 16.dp)
-                                    .fillMaxWidth(),
-                                textAlign = TextAlign.Center
-                            )
+                        Text(
+                            "Deposit Crypto",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp)
+                        )
+                        
+                        Text(
+                            "For non USDC coins deposit fees 2% plus network fees apply. Coins to USDC exchange rates at actual's.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.Red,
+                            modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 16.dp)
+                        )
+
+                        LazyColumn(
+                            contentPadding = PaddingValues(horizontal = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            item { PremiumDepositCard("USDC", "Polygon Network", card.depositaddress?.removePrefix("USDC-POLYGON-"), Color(0xFF8247E5)) }
+                            item { PremiumDepositCard("BTC", "Bitcoin Network", card.btcdepositaddress?.removePrefix("BTC-"), Color(0xFFF7931A)) }
+                            item { PremiumDepositCard("ETH", "Ethereum Network", card.ethdepositaddress?.removePrefix("ETH-"), Color(0xFF627EEA)) }
+                            item { PremiumDepositCard("USDT", "BSC | BEP20", card.usdtdepositaddress?.removePrefix("USDT-BSC|BEP20-"), Color(0xFF26A17B)) }
+                            item { PremiumDepositCard("SOL", "Solana Network", card.soldepositaddress?.removePrefix("SOL-"), Color(0xFF14F195)) }
+                            item { PremiumDepositCard("BNB", "Binance Smart Chain", card.bnbdepositaddress?.removePrefix("BNB-BSC-"), Color(0xFFF3BA2F)) }
+                            item { PremiumDepositCard("XRP", "Ripple Network", card.xrpdepositaddress?.removePrefix("XRP-BSC-"), Color(0xFF23292F)) }
+                            item { PremiumDepositCard("PAXG", "Pax Gold Network", card.paxgdepositaddress?.removePrefix("PAXG-"), Color(0xFFE6B34B)) }
                         }
-
-                        item { DepositAddressRow("USDC-POLYGON", card.depositaddress?.removePrefix("USDC-POLYGON-")) }
-                        item { DepositAddressRow("BTC", card.btcdepositaddress?.removePrefix("BTC-")) }
-                        item { DepositAddressRow("ETH", card.ethdepositaddress?.removePrefix("ETH-")) }
-                        item { DepositAddressRow("USDT-BSC|BEP20", card.usdtdepositaddress?.removePrefix("USDT-BSC|BEP20-")) }
-                        item { DepositAddressRow("SOL", card.soldepositaddress?.removePrefix("SOL-")) }
-                        item { DepositAddressRow("BNB-BSC", card.bnbdepositaddress?.removePrefix("BNB-BSC-")) }
-                        item { DepositAddressRow("XRP-BSC", card.xrpdepositaddress?.removePrefix("XRP-BSC-")) }
-                        item { DepositAddressRow("PAXG", card.paxgdepositaddress?.removePrefix("PAXG-")) }
-
-                        item { Spacer(modifier = Modifier.height(16.dp)) }
                     }
                 }
             }
@@ -376,87 +381,341 @@ fun CardDetailsScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun DepositItemRow(deposit: Deposit) {
-    val amount = deposit.amount / 1_000_000.0
-    val formattedAmount = "+$${"%.2f".format(amount)}"
-    val amountColor = Color(0xFF34A853) // Green for deposits
-    val iconRes = R.drawable.ic_arrow_down
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(2.dp, RoundedCornerShape(12.dp)),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(
-                painter = painterResource(id = iconRes),
-                contentDescription = "Deposit",
-                modifier = Modifier.size(36.dp)
-            )
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = deposit.transactionHash,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.Black,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                val rawDate = deposit.createdAt
-                val formattedDate = try {
-                    val parsed = ZonedDateTime.parse(rawDate)
-                    parsed.format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(Locale.getDefault()))
-                } catch (e: Exception) {
-                    rawDate // fallback if parsing fails
-                }
-                Text(
-                    text = formattedDate,
-                    fontSize = 12.sp,
-                    color = Color.Gray
+fun TransactionList(groupedTransactions: Map<String, List<TransactionItem>>) {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        groupedTransactions.forEach { (date, transactions) ->
+            stickyHeader {
+                DateHeader(date)
+            }
+            items(transactions) { transaction ->
+                TransactionRow(transaction)
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 0.5.dp,
+                    color = Color.LightGray.copy(alpha = 0.5f)
                 )
             }
+        }
+        item { Spacer(modifier = Modifier.height(80.dp)) }
+    }
+}
 
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun DepositList(groupedDeposits: Map<String, List<Deposit>>) {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        groupedDeposits.forEach { (date, deposits) ->
+            stickyHeader {
+                DateHeader(date)
+            }
+            items(deposits) { deposit ->
+                DepositRow(deposit)
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 0.5.dp,
+                    color = Color.LightGray.copy(alpha = 0.5f)
+                )
+            }
+        }
+        item { Spacer(modifier = Modifier.height(80.dp)) }
+    }
+}
+
+@Composable
+fun DateHeader(date: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF8F9FA))
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Text(
+            text = date.uppercase(),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = Color.Gray,
+            letterSpacing = 1.sp
+        )
+    }
+}
+
+@Composable
+fun TransactionRow(transaction: TransactionItem) {
+    val isPayment = transaction.type.lowercase() == "payment"
+    val amountColor = if (isPayment) Color.Black else Color(0xFF34A853)
+    val prefix = if (isPayment) "-" else "+"
+    
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Styled Icon Circle
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFF1F3F4)),
+            contentAlignment = Alignment.Center
+        ) {
             Text(
-                text = formattedAmount,
+                text = transaction.merchant.name.take(1).uppercase(),
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = amountColor
+                color = Color.DarkGray
             )
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = transaction.merchant.name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = try {
+                    val parsed = ZonedDateTime.parse(transaction.paymentDateTime)
+                    parsed.format(DateTimeFormatter.ofPattern("hh:mm a"))
+                } catch (e: Exception) { "" },
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+        }
+
+        Text(
+            text = "$prefix$${"%.2f".format(transaction.amount)}",
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+            color = amountColor
+        )
+    }
+}
+
+@Composable
+fun DepositRow(deposit: Deposit) {
+    val amount = deposit.amount / 1_000_000.0
+    
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFE8F5E9)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_arrow_down),
+                contentDescription = null,
+                tint = Color(0xFF34A853),
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "Crypto Deposit",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = deposit.transactionHash.take(8) + "..." + deposit.transactionHash.takeLast(8),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                maxLines = 1
+            )
+        }
+
+        Text(
+            text = "+$${"%.2f".format(amount)}",
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF34A853)
+        )
+    }
+}
+
+fun <T> groupItemsByDate(
+    items: List<T>,
+    dateSelector: (T) -> String
+): Map<String, List<T>> {
+    val formatter = DateTimeFormatter.ofPattern("dd MMMM yyyy")
+    return items.sortedByDescending { dateSelector(it) }.groupBy { item ->
+        try {
+            val dateTime = ZonedDateTime.parse(dateSelector(item))
+            val date = dateTime.toLocalDate()
+            val now = LocalDate.now()
+            
+            when {
+                date == now -> "Today"
+                date == now.minusDays(1) -> "Yesterday"
+                else -> date.format(formatter)
+            }
+        } catch (e: Exception) {
+            "Unknown Date"
         }
     }
 }
 
 @Composable
-fun DepositAddressRow(label: String, address: String?) {
-    if (!address.isNullOrBlank()) {
-        val clipboardManager = LocalClipboardManager.current
-        val context = LocalContext.current
-        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+fun PremiumDepositCard(
+    currency: String,
+    network: String,
+    address: String?,
+    networkColor: Color
+) {
+    if (address.isNullOrBlank()) return
+
+    var isExpanded by remember { mutableStateOf(false) }
+    var isCopied by remember { mutableStateOf(false) }
+    val clipboardManager = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { isExpanded = !isExpanded },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(text = label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                IconButton(onClick = { 
-                    clipboardManager.setText(AnnotatedString(address))
-                    Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
-                }) {
-                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy Address")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(networkColor.copy(alpha = 0.1f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            currency.take(1),
+                            color = networkColor,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(currency, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Surface(
+                            color = networkColor.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                network,
+                                color = networkColor,
+                                fontSize = 10.sp,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+
+                Row {
+                    IconButton(onClick = {
+                        clipboardManager.setText(AnnotatedString(address))
+                        isCopied = true
+                        scope.launch {
+                            delay(2000)
+                            isCopied = false
+                        }
+                    }) {
+                        Icon(
+                            imageVector = if (isCopied) Icons.Default.Check else Icons.Default.ContentCopy,
+                            contentDescription = "Copy",
+                            tint = if (isCopied) Color(0xFF34A853) else Color.Gray
+                        )
+                    }
+                    IconButton(onClick = { isExpanded = !isExpanded }) {
+                        Icon(
+                            imageVector = Icons.Default.QrCode,
+                            contentDescription = "QR Code",
+                            tint = Color.Gray
+                        )
+                    }
                 }
             }
-            Text(text = address, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-            Divider(modifier = Modifier.padding(top = 8.dp))
+
+            AnimatedVisibility(visible = isExpanded) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
+                ) {
+                    Text(
+                        address,
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    val qrCodeBitmap = remember(address) { generateQrCode(address) }
+                    qrCodeBitmap?.let {
+                        Image(
+                            bitmap = it.asImageBitmap(),
+                            contentDescription = "QR Code",
+                            modifier = Modifier
+                                .size(160.dp)
+                                .shadow(4.dp, RoundedCornerShape(8.dp))
+                                .background(Color.White)
+                                .padding(8.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Text(
+                        "Send only $currency to this address via $network network.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.Red.copy(alpha = 0.7f),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
         }
+    }
+}
+
+private fun generateQrCode(text: String): Bitmap? {
+    return try {
+        val writer = QRCodeWriter()
+        val bitMatrix = writer.encode(text, BarcodeFormat.QR_CODE, 512, 512)
+        val width = bitMatrix.width
+        val height = bitMatrix.height
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
+        for (x in 0 until width) {
+            for (y in 0 until height) {
+                bitmap.setPixel(x, y, if (bitMatrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+            }
+        }
+        bitmap
+    } catch (e: Exception) {
+        null
     }
 }
 
@@ -484,7 +743,7 @@ fun FlippableCard(card: CardDetails) {
                 }
                 .background(
                     brush = Brush.linearGradient(
-                        colors = listOf(Color(0xFF4B79A1), Color(0xFF283E51))
+                        colors = listOf(Color(0xFF2B2B2B), Color(0xFF000000))
                     ),
                     shape = RoundedCornerShape(16.dp)
                 )
