@@ -4,7 +4,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ApplyCardResponse(
-    val code: Int,
+    @Serializable(with = CodeSerializer::class)
+    val code: String? = null,
     val status: String = "",
     val message: String = "",
     val depositaddress: String? = null,

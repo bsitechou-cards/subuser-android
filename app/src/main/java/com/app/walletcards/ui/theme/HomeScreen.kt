@@ -65,6 +65,7 @@ fun HomeScreen(
 ) {
     val auth = FirebaseAuth.getInstance()
     val userEmail = auth.currentUser?.email ?: ""
+    val context = LocalContext.current
 
     var cardResponse by remember { mutableStateOf<CardResponse?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -80,7 +81,13 @@ fun HomeScreen(
     LaunchedEffect(refreshTrigger) {
         isLoading = true
         scope.launch {
-            cardResponse = CardApiService.getAllDigitalCards(userEmail)
+            val response = CardApiService.getAllDigitalCards(userEmail)
+            if (response?.code == "401") {
+                Toast.makeText(context, "User Not Found", Toast.LENGTH_LONG).show()
+                onLogout()
+            } else {
+                cardResponse = response
+            }
             isLoading = false
         }
     }
@@ -178,15 +185,21 @@ fun HomeScreen(
     }
 
     if (isSheetOpen) {
-        ApplyForCardBottomSheet(userEmail = userEmail, subuserFee = cardResponse?.subuserfee ?: 0.0, onDismiss = { isSheetOpen = false }, onCardApplied = {
-            isSheetOpen = false
-            refreshTrigger++
-        }, onShowQrCode = {
-            isSheetOpen = false
-            depositAddress = it.first
-            subuserFee = it.second.toDoubleOrNull()
-            showQrCodeDialog = true
-        })
+        ApplyForCardBottomSheet(
+            userEmail = userEmail,
+            subuserFee = cardResponse?.subuserfee ?: 0.0,
+            onDismiss = { isSheetOpen = false },
+            onCardApplied = {
+                isSheetOpen = false
+                refreshTrigger++
+            },
+            onShowQrCode = {
+                isSheetOpen = false
+                depositAddress = it.first
+                subuserFee = it.second.toDoubleOrNull()
+                showQrCodeDialog = true
+            }
+        )
     }
 
     if (showQrCodeDialog) {
@@ -237,8 +250,7 @@ fun PaymentPendingCard(card: CardItem, onPayNowClick: () -> Unit) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+                verticalAlignment = Alignment.CenterVertically) {
                 Text("Payment Pending", color = Color.White)
                 Button(
                     onClick = onPayNowClick,
@@ -402,6 +414,12 @@ fun ApplyForCardBottomSheet(
     var isSubmitting by remember { mutableStateOf(false) }
     var isBotTyping by remember { mutableStateOf(false) }
 
+    // Step-specific states moved to top level to persist during recomposition
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState()
+    var countrySearchText by remember { mutableStateOf("") }
+    var codeSearchText by remember { mutableStateOf("") }
+
     val countries = remember {
         Locale.getISOCountries().map {
             @Suppress("DEPRECATION")
@@ -451,7 +469,7 @@ fun ApplyForCardBottomSheet(
 
     fun handleNext(customValue: String? = null) {
         val finalValue = customValue ?: inputValue
-        if (finalValue.isBlank() && currentStep != 9 && currentStep != 3 && currentStep != 4 && currentStep != 0) return
+        if (finalValue.isBlank() && currentStep != 9 && currentStep != 3 && currentStep != 4 && currentStep != 0 && currentStep != 10) return
 
         // Phone number validation (Step 5)
         if (currentStep == 5) {
@@ -635,19 +653,21 @@ fun ApplyForCardBottomSheet(
                                 }
                             }
                             3 -> { // DOB Step
-                                var showDatePicker by remember { mutableStateOf(false) }
-                                val datePickerState = rememberDatePickerState()
-                                
                                 OutlinedTextField(
                                     value = dob,
                                     onValueChange = {},
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true },
                                     readOnly = true,
+                                    enabled = false,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                    ),
                                     label = { Text("Select Date of Birth") },
                                     trailingIcon = {
-                                        IconButton(onClick = { showDatePicker = true }) {
-                                            Icon(Icons.Default.CalendarMonth, contentDescription = null)
-                                        }
+                                        Icon(Icons.Default.CalendarMonth, contentDescription = null)
                                     }
                                 )
                                 
@@ -674,7 +694,6 @@ fun ApplyForCardBottomSheet(
                                 }
                             }
                             4 -> { // Country Code Step
-                                var codeSearchText by remember { mutableStateOf("") }
                                 val filteredCodes = countryCodes.filter {
                                     it.name.contains(codeSearchText, ignoreCase = true) ||
                                             it.code.contains(codeSearchText)
@@ -697,6 +716,7 @@ fun ApplyForCardBottomSheet(
                                                         text = { Text("${countryCodeItem.name} (+${countryCodeItem.code})") },
                                                         onClick = {
                                                             handleNext(countryCodeItem.code)
+                                                            codeSearchText = "" // Clear after selection
                                                         }
                                                     )
                                                 }
@@ -716,7 +736,6 @@ fun ApplyForCardBottomSheet(
                                 }
                             }
                             9 -> { // Country Step
-                                var countrySearchText by remember { mutableStateOf("") }
                                 val filteredCountries = countries.filter { it.first.contains(countrySearchText, ignoreCase = true) }
 
                                 Column {
@@ -736,6 +755,7 @@ fun ApplyForCardBottomSheet(
                                                         text = { Text(name) },
                                                         onClick = {
                                                             handleNext(code)
+                                                            countrySearchText = "" // Clear after selection
                                                         }
                                                     )
                                                 }
@@ -760,7 +780,7 @@ fun ApplyForCardBottomSheet(
                                         modifier = Modifier.weight(1f),
                                         placeholder = { Text("Type your answer...") },
                                         shape = RoundedCornerShape(24.dp),
-                                        keyboardOptions = if (currentStep == 5) KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default
+                                        keyboardOptions = if (currentStep == 4 || currentStep == 5) KeyboardOptions(keyboardType = KeyboardType.Number) else KeyboardOptions.Default
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     IconButton(
