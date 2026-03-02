@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -54,6 +55,7 @@ import com.app.walletcards.model.Deposit
 import com.app.walletcards.model.ThreeDSResponse
 import com.app.walletcards.model.TransactionItem
 import com.app.walletcards.network.CardApiService
+import com.app.walletcards.util.LocalizationUtil
 import com.google.firebase.auth.FirebaseAuth
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
@@ -106,7 +108,7 @@ fun CardDetailsScreen(
             .background(Color(0xFFF8F9FA))
             .navigationBarsPadding()
     ) {
-        // Top Row Header: Identical to HomeScreen styling
+        // Top Row Header: Dynamic App Name
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = Color.White,
@@ -120,24 +122,25 @@ fun CardDetailsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Image(
                         painter = painterResource(id = R.mipmap.ic_launcher),
                         contentDescription = "App Icon",
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(32.dp)
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Card Details",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        text = stringResource(id = R.string.app_name),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        fontSize = 18.sp
                     )
                 }
 
-                // Professional Back Button: Styled like HomeScreen utility buttons
                 QuickActionItem(
                     icon = Icons.AutoMirrored.Filled.ArrowBack,
-                    label = "Back",
+                    label = LocalizationUtil.getString("back"),
                     size = 40.dp,
                     onClick = { navController.popBackStack() }
                 )
@@ -158,12 +161,10 @@ fun CardDetailsScreen(
                     } else if (response?.data != null) {
                         val card = response!!.data!!
 
-                        // Flippable card
                         FlippableCard(card = card)
 
                         Spacer(modifier = Modifier.height(32.dp))
 
-                        // Balance and actions
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
@@ -171,7 +172,7 @@ fun CardDetailsScreen(
                         ) {
                             Column {
                                 Text(
-                                    text = "Current Balance",
+                                    text = LocalizationUtil.getString("current_balance"),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = Color.Gray
                                 )
@@ -203,7 +204,7 @@ fun CardDetailsScreen(
                                                 try {
                                                     val apiResponse = CardApiService.check3ds(userEmail, cardId)
                                                     if (apiResponse == null) {
-                                                        Toast.makeText(context, "An error occurred. Please try again.", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(context, "An error occurred.", Toast.LENGTH_SHORT).show()
                                                     } else if (apiResponse.code == "422") {
                                                         Toast.makeText(context, "No 3DS Request", Toast.LENGTH_SHORT).show()
                                                     } else if (apiResponse.code == "200") {
@@ -238,7 +239,7 @@ fun CardDetailsScreen(
                                                     Toast.makeText(context, apiResponse.message, Toast.LENGTH_SHORT).show()
                                                     refreshTrigger++
                                                 } else {
-                                                    Toast.makeText(context, "An error occurred. Please try again.", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, "An error occurred.", Toast.LENGTH_SHORT).show()
                                                 }
                                             } finally {
                                                 isTogglingBlock = false
@@ -265,7 +266,10 @@ fun CardDetailsScreen(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        val tabTitles = listOf("Transactions", "Deposits")
+                        val tabTitles = listOf(
+                            LocalizationUtil.getString("transactions"),
+                            LocalizationUtil.getString("deposits")
+                        )
                         val pagerState = rememberPagerState { tabTitles.size }
 
                         Column(modifier = Modifier.fillMaxSize()) {
@@ -342,14 +346,14 @@ fun CardDetailsScreen(
                             .padding(bottom = 32.dp)
                     ) {
                         Text(
-                            "Deposit Crypto",
+                            LocalizationUtil.getString("deposit_crypto"),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp)
                         )
                         
                         Text(
-                            "For non USDC coins deposit fees 2% plus network fees apply. Coins to USDC exchange rates at actual's.",
+                            LocalizationUtil.getString("disclaimer_non_usdc"),
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.Red,
                             modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 16.dp)
@@ -529,7 +533,7 @@ fun DepositRow(deposit: Deposit) {
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Crypto Deposit",
+                text = LocalizationUtil.getString("crypto_deposit"),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold
             )
@@ -554,7 +558,6 @@ fun <T> groupItemsByDate(
     items: List<T>,
     dateSelector: (T) -> String
 ): Map<String, List<T>> {
-    val formatter = DateTimeFormatter.ofPattern("dd MMMM yyyy")
     return items.sortedByDescending { dateSelector(it) }.groupBy { item ->
         try {
             val dateTime = ZonedDateTime.parse(dateSelector(item))
@@ -562,9 +565,9 @@ fun <T> groupItemsByDate(
             val now = LocalDate.now()
             
             when {
-                date == now -> "Today"
-                date == now.minusDays(1) -> "Yesterday"
-                else -> date.format(formatter)
+                date == now -> LocalizationUtil.getString("today")
+                date == now.minusDays(1) -> LocalizationUtil.getString("yesterday")
+                else -> date.format(DateTimeFormatter.ofPattern("dd MMMM yyyy"))
             }
         } catch (e: Exception) {
             "Unknown Date"
@@ -785,7 +788,7 @@ fun FlippableCard(card: CardDetails) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text("Cardholder", color = Color.LightGray, fontSize = 12.sp)
+                        Text(LocalizationUtil.getString("cardholder"), color = Color.LightGray, fontSize = 12.sp)
                         Text(
                             card.nameoncard.uppercase(),
                             color = Color.White,
@@ -793,7 +796,7 @@ fun FlippableCard(card: CardDetails) {
                         )
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("Expiry", color = Color.LightGray, fontSize = 12.sp)
+                        Text(LocalizationUtil.getString("expiry"), color = Color.LightGray, fontSize = 12.sp)
                         Text(
                             "${card.expiry_month}/${card.expiry_year}",
                             color = Color.White,
@@ -852,7 +855,7 @@ fun FlippableCard(card: CardDetails) {
 
                 // Billing Address
                 Column(modifier = Modifier.align(Alignment.Start)) {
-                    Text("Billing Address:", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(LocalizationUtil.getString("billing_address"), color = Color.White, fontWeight = FontWeight.Bold)
                     Text("${card.address1 ?: ""}, ${card.city ?: ""}, ${card.state ?: ""}, ${"United Kingdom"}, ${card.postalCode ?: ""}", color = Color.White,fontSize = 16.sp,)
                 }
 

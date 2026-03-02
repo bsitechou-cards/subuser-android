@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.app.walletcards.model.ThreeDSResponse
 import com.app.walletcards.network.CardApiService
+import com.app.walletcards.util.LocalizationUtil
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -67,7 +68,7 @@ fun ThreeDSBottomSheet(response: ThreeDSResponse, cardId: String, userEmail: Str
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    "3DS Authentication",
+                    LocalizationUtil.getString("3ds_auth"),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -83,9 +84,9 @@ fun ThreeDSBottomSheet(response: ThreeDSResponse, cardId: String, userEmail: Str
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     response.data?.let { data ->
-                        DetailRow("Merchant", data.merchantName)
+                        DetailRow(LocalizationUtil.getString("merchant"), data.merchantName)
                         Spacer(modifier = Modifier.height(12.dp))
-                        DetailRow("Amount", "${data.merchantAmount} ${data.merchantCurrency}")
+                        DetailRow(LocalizationUtil.getString("amount"), "${data.merchantAmount} ${data.merchantCurrency}")
                     }
                 }
             }
@@ -113,7 +114,7 @@ fun ThreeDSBottomSheet(response: ThreeDSResponse, cardId: String, userEmail: Str
                 ) {
                     Icon(Icons.Default.Close, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Reject")
+                    Text(LocalizationUtil.getString("reject"))
                 }
 
                 // Approve Button
@@ -131,7 +132,7 @@ fun ThreeDSBottomSheet(response: ThreeDSResponse, cardId: String, userEmail: Str
                                     onDismiss()
                                 } else {
                                     isApproving = false
-                                    Toast.makeText(context, "Approval failed. Please try again.", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, LocalizationUtil.getString("approval_failed"), Toast.LENGTH_SHORT).show()
                                 }
                             }
                         }
@@ -152,9 +153,9 @@ fun ThreeDSBottomSheet(response: ThreeDSResponse, cardId: String, userEmail: Str
                     } else if (isApproved) {
                         Icon(Icons.Default.Check, contentDescription = null, tint = Color.White)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Approved")
+                        Text(LocalizationUtil.getString("approved"))
                     } else {
-                        Text("Approve")
+                        Text(LocalizationUtil.getString("approve"))
                     }
                 }
             }
@@ -162,7 +163,7 @@ fun ThreeDSBottomSheet(response: ThreeDSResponse, cardId: String, userEmail: Str
             Spacer(modifier = Modifier.height(16.dp))
             
             Text(
-                "Please verify the transaction details before approving.",
+                LocalizationUtil.getString("verify_details"),
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.Gray,
                 textAlign = TextAlign.Center

@@ -30,10 +30,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.RemoveRedEye
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -52,6 +54,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -68,6 +71,7 @@ import com.app.walletcards.model.CardResponse
 import com.app.walletcards.model.ChatMessage
 import com.app.walletcards.network.CardApiService
 import com.app.walletcards.util.countryCodes
+import com.app.walletcards.util.LocalizationUtil
 
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
@@ -92,6 +96,7 @@ fun HomeScreen(
 
     val scope = rememberCoroutineScope()
     var isSheetOpen by remember { mutableStateOf(false) }
+    var isSettingsOpen by remember { mutableStateOf(false) }
     var showQrCodeDialog by remember { mutableStateOf(false) }
     var depositAddress by remember { mutableStateOf<String?>(null) }
     var subuserFee by remember { mutableStateOf<Double?>(null) }
@@ -102,7 +107,7 @@ fun HomeScreen(
         scope.launch {
             val response = CardApiService.getAllDigitalCards(userEmail)
             if (response?.code == "401") {
-                Toast.makeText(context, "User Not Found", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, LocalizationUtil.getString("user_not_found"), Toast.LENGTH_LONG).show()
                 onLogout()
             } else {
                 cardResponse = response
@@ -121,7 +126,7 @@ fun HomeScreen(
             .navigationBarsPadding()
     ) {
 
-        // Top Row: App Icon + Wallet title + Quick Actions
+        // Top Row: App Icon + Dynamic App Name + Quick Actions
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = Color.White,
@@ -134,32 +139,34 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Image(
                         painter = painterResource(id = R.mipmap.ic_launcher),
                         contentDescription = "App Icon",
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(32.dp)
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        "Cards Wallet",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        text = stringResource(id = R.string.app_name),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        fontSize = 18.sp
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     QuickActionItem(
                         icon = Icons.Default.Add,
-                        label = "Apply New",
-                        size = 40.dp,
+                        label = LocalizationUtil.getString("apply_new"),
+                        size = 38.dp,
                         onClick = { isSheetOpen = true }
                     )
                     QuickActionItem(
-                        icon = Icons.Default.PowerSettingsNew,
-                        label = "Logout",
-                        size = 40.dp,
-                        onClick = onLogout
+                        icon = Icons.Default.Settings,
+                        label = LocalizationUtil.getString("settings"),
+                        size = 38.dp,
+                        onClick = { isSettingsOpen = true }
                     )
                 }
             }
@@ -177,7 +184,7 @@ fun HomeScreen(
                 // 1. HERO SECTION: MY CARDS
                 item {
                     Text(
-                        "My Cards",
+                        LocalizationUtil.getString("my_cards"),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(start = 24.dp, top = 24.dp, bottom = 12.dp)
@@ -239,7 +246,7 @@ fun HomeScreen(
                 if (pendingCards.isNotEmpty()) {
                     item {
                         Text(
-                            "Action Required",
+                            LocalizationUtil.getString("action_required"),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(start = 24.dp, top = 32.dp, bottom = 12.dp)
@@ -285,6 +292,16 @@ fun HomeScreen(
         )
     }
 
+    if (isSettingsOpen) {
+        SettingsBottomSheet(
+            onDismiss = { isSettingsOpen = false },
+            onLogout = {
+                isSettingsOpen = false
+                onLogout()
+            }
+        )
+    }
+
     if (showQrCodeDialog) {
         Dialog(
             onDismissRequest = { showQrCodeDialog = false },
@@ -299,6 +316,82 @@ fun HomeScreen(
                 }
             )
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsBottomSheet(onDismiss: () -> Unit, onLogout: () -> Unit) {
+    val context = LocalContext.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showLanguagePicker by remember { mutableStateOf(false) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Color.White
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                LocalizationUtil.getString("settings"),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(24.dp)
+            )
+
+            // Language Option
+            ListItem(
+                headlineContent = { Text(LocalizationUtil.getString("language")) },
+                supportingContent = { 
+                    val currentLang = LocalizationUtil.supportedLanguages.find { it.second == LocalizationUtil.selectedLanguage }
+                    Text(currentLang?.first ?: "English")
+                },
+                leadingContent = { Icon(Icons.Default.Language, contentDescription = null) },
+                modifier = Modifier.clickable { showLanguagePicker = true }
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
+
+            // Logout Option
+            ListItem(
+                headlineContent = { Text(LocalizationUtil.getString("logout"), color = Color.Red) },
+                leadingContent = { Icon(Icons.Default.PowerSettingsNew, contentDescription = null, tint = Color.Red) },
+                modifier = Modifier.clickable { onLogout() }
+            )
+        }
+    }
+
+    if (showLanguagePicker) {
+        AlertDialog(
+            onDismissRequest = { showLanguagePicker = false },
+            title = { Text(LocalizationUtil.getString("select_language")) },
+            text = {
+                LazyColumn {
+                    items(LocalizationUtil.supportedLanguages) { (label, code, _) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    LocalizationUtil.saveLanguage(context, code)
+                                    showLanguagePicker = false
+                                }
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = LocalizationUtil.selectedLanguage == code, onClick = null)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
     }
 }
 
@@ -369,7 +462,7 @@ fun PendingCardItem(card: com.app.walletcards.model.CardItem, onPayNowClick: () 
                         shape = RoundedCornerShape(4.dp)
                     ) {
                         Text(
-                            "Awaiting Payment",
+                            LocalizationUtil.getString("awaiting_payment"),
                             color = Color(0xFFE65100),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
@@ -389,7 +482,7 @@ fun PendingCardItem(card: com.app.walletcards.model.CardItem, onPayNowClick: () 
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 ) {
-                    Text("Pay Now", fontSize = 12.sp)
+                    Text(LocalizationUtil.getString("pay_now"), fontSize = 12.sp)
                 }
             }
         }
@@ -449,7 +542,7 @@ fun EmptyCardDesign(onApplyClick: () -> Unit) {
         Text("No active cards yet", color = Color.Gray)
         Spacer(modifier = Modifier.height(24.dp))
         Button(onClick = onApplyClick) {
-            Text("Apply New Card")
+            Text(LocalizationUtil.getString("apply_new"))
         }
     }
 }
@@ -601,17 +694,17 @@ fun ApplyForCardBottomSheet(
     }
 
     val steps = listOf(
-        "There is a fee for new cards of $${subuserFee + 5} out of which $5 will remain as your card balance. Confirm to continue.",
-        "What will be the first name on the card?",
-        "What will be the last name on the card?",
-        "What is your date of birth?",
-        "What is your country phonecode?",
-        "What is your phone number?",
-        "What is your address?",
-        "What is your city?",
-        "What is your state?",
-        "What is your country?",
-        "What is your postal code?"
+        LocalizationUtil.getString("step_fee").format(subuserFee + 5),
+        LocalizationUtil.getString("step_first_name"),
+        LocalizationUtil.getString("step_last_name"),
+        LocalizationUtil.getString("step_dob"),
+        LocalizationUtil.getString("step_country_code"),
+        LocalizationUtil.getString("step_phone"),
+        LocalizationUtil.getString("step_address"),
+        LocalizationUtil.getString("step_city"),
+        LocalizationUtil.getString("step_state"),
+        LocalizationUtil.getString("step_country"),
+        LocalizationUtil.getString("step_postal")
     )
 
     val fields = listOf(
@@ -651,14 +744,14 @@ fun ApplyForCardBottomSheet(
                     isBotTyping = true
                     delay(1000)
                     isBotTyping = false
-                    messages.add(ChatMessage.Question("Invalid input. The phone number should not include any spaces or special characters. Please re-enter your phone number.", fields[currentStep]))
+                    messages.add(ChatMessage.Question(LocalizationUtil.getString("invalid_phone"), fields[currentStep]))
                 }
                 return
             }
         }
 
         val displayValue = when (currentStep) {
-            0 -> "Confirmed"
+            0 -> LocalizationUtil.getString("confirm")
             3 -> finalValue
             4 -> "+$finalValue"
             9 -> countries.find { it.second == finalValue }?.first ?: finalValue
@@ -695,7 +788,7 @@ fun ApplyForCardBottomSheet(
                 isBotTyping = true
                 delay(1000)
                 isBotTyping = false
-                messages.add(ChatMessage.Question("Thank you, I am going to apply the card for you now.", "done"))
+                messages.add(ChatMessage.Question(LocalizationUtil.getString("thank_you_apply"), "done"))
                 delay(1500)
                 isSubmitting = true
                 val request = ApplyCardRequest(
@@ -739,7 +832,7 @@ fun ApplyForCardBottomSheet(
                 .imePadding()
         ) {
             Text(
-                "Apply for New Card",
+                LocalizationUtil.getString("apply_for_card"),
                 modifier = Modifier.padding(16.dp),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
@@ -780,8 +873,13 @@ fun ApplyForCardBottomSheet(
                                     color = MaterialTheme.colorScheme.primary,
                                     shape = RoundedCornerShape(12.dp, 12.dp, 0.dp, 12.dp)
                                 ) {
+                                    val displayText = if (message.isSensitive) {
+                                        "*".repeat(message.text.length)
+                                    } else {
+                                        message.text
+                                    }
                                     Text(
-                                        text = message.text,
+                                        text = displayText,
                                         modifier = Modifier.padding(12.dp),
                                         color = Color.White,
                                         style = MaterialTheme.typography.bodyLarge
@@ -814,10 +912,10 @@ fun ApplyForCardBottomSheet(
                             0 -> {
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Button(onClick = onDismiss, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)) {
-                                        Text("Cancel")
+                                        Text(LocalizationUtil.getString("cancel"))
                                     }
                                     Button(onClick = { handleNext("apply") }, modifier = Modifier.weight(1f)) {
-                                        Text("Apply")
+                                        Text(LocalizationUtil.getString("apply"))
                                     }
                                 }
                             }
@@ -834,7 +932,7 @@ fun ApplyForCardBottomSheet(
                                         disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                         disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
                                     ),
-                                    label = { Text("Select Date of Birth") },
+                                    label = { Text(LocalizationUtil.getString("select_dob")) },
                                     trailingIcon = { Icon(Icons.Default.CalendarMonth, contentDescription = null) }
                                 )
                                 
@@ -849,10 +947,10 @@ fun ApplyForCardBottomSheet(
                                                     handleNext(date)
                                                 }
                                                 showDatePicker = false
-                                            }) { Text("OK") }
+                                            }) { Text(LocalizationUtil.getString("done")) }
                                         },
                                         dismissButton = {
-                                            TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+                                            TextButton(onClick = { showDatePicker = false }) { Text(LocalizationUtil.getString("cancel")) }
                                         }
                                     ) {
                                         DatePicker(state = datePickerState)
@@ -893,7 +991,7 @@ fun ApplyForCardBottomSheet(
                                         modifier = Modifier.fillMaxWidth(),
                                         value = codeSearchText,
                                         onValueChange = { codeSearchText = it },
-                                        label = { Text("Search Country Code") },
+                                        label = { Text(LocalizationUtil.getString("search_country_code")) },
                                         placeholder = { Text("e.g. United States or 1") },
                                         trailingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                                         shape = RoundedCornerShape(24.dp),
@@ -932,7 +1030,7 @@ fun ApplyForCardBottomSheet(
                                         modifier = Modifier.fillMaxWidth(),
                                         value = countrySearchText,
                                         onValueChange = { countrySearchText = it },
-                                        label = { Text("Search Country") },
+                                        label = { Text(LocalizationUtil.getString("search_country")) },
                                         trailingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                                         shape = RoundedCornerShape(24.dp)
                                     )

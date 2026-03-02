@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.app.walletcards.util.LocalizationUtil
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import kotlinx.coroutines.delay
@@ -77,7 +78,7 @@ fun QrCodeScreen(
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        "Card Payment",
+                        LocalizationUtil.getString("card_payment"),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -91,7 +92,7 @@ fun QrCodeScreen(
 
             // Amount Section
             Text(
-                "Total Amount to Pay",
+                LocalizationUtil.getString("total_to_pay"),
                 style = MaterialTheme.typography.labelLarge,
                 color = Color.Gray
             )
@@ -144,7 +145,7 @@ fun QrCodeScreen(
 
             // Address Section
             Text(
-                "Deposit Address",
+                LocalizationUtil.getString("deposit_address"),
                 style = MaterialTheme.typography.labelLarge,
                 color = Color.Gray,
                 modifier = Modifier.fillMaxWidth(),
@@ -193,7 +194,7 @@ fun QrCodeScreen(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    text = "Kindly pay the exact amount only. Lower amounts may cause loss of funds. $5.00 will remain as your initial card balance.",
+                    text = LocalizationUtil.getString("disclaimer_exact_amount"),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFFC62828),
                     modifier = Modifier.padding(16.dp),
@@ -210,7 +211,7 @@ fun QrCodeScreen(
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Text("I Have Paid", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(LocalizationUtil.getString("i_have_paid"), fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         }
     }

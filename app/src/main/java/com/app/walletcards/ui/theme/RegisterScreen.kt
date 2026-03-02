@@ -2,6 +2,7 @@ package com.app.walletcards.ui.theme
 
 import android.widget.Toast
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,6 +11,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,15 +21,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.app.walletcards.R
 import com.app.walletcards.model.ChatMessage
 import com.app.walletcards.model.SubUser
 import com.app.walletcards.network.CardApiService
+import com.app.walletcards.util.LocalizationUtil
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -50,12 +56,14 @@ fun RegisterScreen(
     var inputValue by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var isBotTyping by remember { mutableStateOf(false) }
+    var isSettingsOpen by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(LocalizationUtil.selectedLanguage) {
+        messages.clear()
         isBotTyping = true
-        delay(1500)
+        delay(1000)
         isBotTyping = false
-        messages.add(ChatMessage.Question("Let's create your account! Please enter your email address.", "email"))
+        messages.add(ChatMessage.Question(LocalizationUtil.getString("let_create_account"), "email"))
     }
 
     LaunchedEffect(messages.size, isBotTyping) {
@@ -78,9 +86,9 @@ fun RegisterScreen(
                     currentStep = 1
                     inputValue = ""
                     isBotTyping = true
-                    delay(1500)
+                    delay(1000)
                     isBotTyping = false
-                    messages.add(ChatMessage.Question("Great! Now, please choose a password (6 alphanumeric characters).", "password"))
+                    messages.add(ChatMessage.Question(LocalizationUtil.getString("choose_password"), "password"))
                 }
             }
             1 -> {
@@ -91,7 +99,7 @@ fun RegisterScreen(
                         isBotTyping = true
                         delay(1000)
                         isBotTyping = false
-                        messages.add(ChatMessage.Question("Password must be 6 alphanumeric characters. Please try again.", "password"))
+                        messages.add(ChatMessage.Question(LocalizationUtil.getString("invalid_password_format"), "password"))
                     }
                 } else {
                     isLoading = true
@@ -108,9 +116,9 @@ fun RegisterScreen(
                                     } else {
                                         val errorMsg = response?.message ?: "Backend registration failed."
                                         isBotTyping = true
-                                        delay(1500)
+                                        delay(1000)
                                         isBotTyping = false
-                                        messages.add(ChatMessage.Question("Oops! $errorMsg. Let's try your email again.", "email"))
+                                        messages.add(ChatMessage.Question("${LocalizationUtil.getString("registration_failed")}: $errorMsg", "email"))
                                         currentStep = 0
                                         inputValue = ""
                                     }
@@ -120,9 +128,9 @@ fun RegisterScreen(
                                 val errorMsg = task.exception?.message ?: "Firebase registration failed"
                                 scope.launch {
                                     isBotTyping = true
-                                    delay(1500)
+                                    delay(1000)
                                     isBotTyping = false
-                                    messages.add(ChatMessage.Question("Registration failed: $errorMsg. Let's try your email again.", "email"))
+                                    messages.add(ChatMessage.Question("${LocalizationUtil.getString("registration_failed")}: $errorMsg", "email"))
                                     currentStep = 0
                                     inputValue = ""
                                     isLoading = false
@@ -141,23 +149,42 @@ fun RegisterScreen(
             .navigationBarsPadding()
             .imePadding()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        // Top Bar: Identical to Home/Details screen
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color.White,
+            shadowElevation = 2.dp
         ) {
-            Image(
-                painter = painterResource(id = R.mipmap.ic_launcher),
-                contentDescription = "App Icon",
-                modifier = Modifier.size(40.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                "Create Account",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Image(
+                        painter = painterResource(id = R.mipmap.ic_launcher),
+                        contentDescription = "App Icon",
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = stringResource(id = R.string.app_name),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        fontSize = 18.sp
+                    )
+                }
+
+                QuickActionItem(
+                    icon = Icons.Default.Settings,
+                    label = LocalizationUtil.getString("settings"),
+                    size = 38.dp,
+                    onClick = { isSettingsOpen = true }
+                )
+            }
         }
 
         LazyColumn(
@@ -167,6 +194,7 @@ fun RegisterScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            item { Spacer(modifier = Modifier.height(16.dp)) }
             items(messages) { message ->
                 when (message) {
                     is ChatMessage.Question -> {
@@ -175,10 +203,10 @@ fun RegisterScreen(
                             horizontalArrangement = Arrangement.Start,
                             verticalAlignment = Alignment.Top
                         ) {
-                            BotAvatar()
+                            BotAvatarIcon()
                             Spacer(modifier = Modifier.width(8.dp))
                             Surface(
-                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                color = Color(0xFFF1F3F4),
                                 shape = RoundedCornerShape(0.dp, 12.dp, 12.dp, 12.dp)
                             ) {
                                 Text(
@@ -214,7 +242,7 @@ fun RegisterScreen(
             
             if (isBotTyping) {
                 item {
-                    TypingIndicator()
+                    BotTypingIndicator()
                 }
             }
 
@@ -238,7 +266,7 @@ fun RegisterScreen(
                                 onValueChange = { inputValue = it },
                                 modifier = Modifier.weight(1f),
                                 placeholder = { 
-                                    Text(if (currentStep == 0) "Enter email..." else "Enter password...") 
+                                    Text(if (currentStep == 0) LocalizationUtil.getString("enter_email") else LocalizationUtil.getString("enter_password")) 
                                 },
                                 shape = RoundedCornerShape(24.dp),
                                 keyboardOptions = KeyboardOptions(
@@ -264,11 +292,82 @@ fun RegisterScreen(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         TextButton(onClick = onLoginClick) {
-                            Text("Already have an account? Login", style = MaterialTheme.typography.bodySmall)
+                            Text(LocalizationUtil.getString("already_have_account"), style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
             }
         }
+    }
+
+    if (isSettingsOpen) {
+        RegisterSettingsBottomSheet(onDismiss = { isSettingsOpen = false })
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RegisterSettingsBottomSheet(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showLanguagePicker by remember { mutableStateOf(false) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = Color.White
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                LocalizationUtil.getString("settings"),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(24.dp)
+            )
+
+            // Language Option
+            ListItem(
+                headlineContent = { Text(LocalizationUtil.getString("language")) },
+                supportingContent = { 
+                    val currentLang = LocalizationUtil.supportedLanguages.find { it.second == LocalizationUtil.selectedLanguage }
+                    Text(currentLang?.first ?: "English")
+                },
+                leadingContent = { Icon(Icons.Default.Language, contentDescription = null) },
+                modifier = Modifier.clickable { showLanguagePicker = true }
+            )
+        }
+    }
+
+    if (showLanguagePicker) {
+        AlertDialog(
+            onDismissRequest = { showLanguagePicker = false },
+            title = { Text(LocalizationUtil.getString("select_language")) },
+            text = {
+                LazyColumn {
+                    items(LocalizationUtil.supportedLanguages) { (label, code, _) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    LocalizationUtil.saveLanguage(context, code)
+                                    showLanguagePicker = false
+                                }
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = LocalizationUtil.selectedLanguage == code, onClick = null)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
     }
 }
