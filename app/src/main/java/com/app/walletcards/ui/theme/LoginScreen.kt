@@ -58,6 +58,8 @@ fun LoginScreen(
 
     LaunchedEffect(LocalizationUtil.selectedLanguage) {
         messages.clear()
+        currentStep = 0 // Reset step to 0 when language changes to match the welcome message
+        inputValue = ""
         isBotTyping = true
         delay(1000)
         isBotTyping = false
@@ -79,7 +81,10 @@ fun LoginScreen(
 
         when (currentStep) {
             0 -> {
-                if (finalValue.lowercase() == "yes" || finalValue.lowercase() == "oui") {
+                val yesTranslated = LocalizationUtil.getString("yes")
+                if (finalValue.equals(yesTranslated, ignoreCase = true) || 
+                    finalValue.equals("yes", ignoreCase = true) || 
+                    finalValue.equals("oui", ignoreCase = true)) {
                     scope.launch {
                         currentStep = 1
                         inputValue = ""
