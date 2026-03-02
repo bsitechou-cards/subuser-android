@@ -2,27 +2,23 @@ package com.app.walletcards
 
 import android.os.Build
 import android.os.Bundle
-import android.view.WindowInsets
-import android.view.WindowInsetsController
 import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.navigation.compose.*
 import com.app.walletcards.ui.theme.HomeScreen
 import com.app.walletcards.ui.theme.LoginScreen
@@ -43,13 +39,15 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         FirebaseApp.initializeApp(this)
 
         // Make the app fullscreen
-        hideSystemUI()
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
             val context = LocalContext.current
             var showLanguageSelection by remember { mutableStateOf(!LocalizationUtil.isLanguageSet(context)) }
             
+            // Hide system bars when the app starts
             LaunchedEffect(Unit) {
+                hideSystemUI()
                 LocalizationUtil.loadLanguage(context)
             }
 
@@ -124,20 +122,9 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
     }
 
     private fun hideSystemUI() {
-        // This will hide the status bar and navigation bar
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val controller = window.insetsController
-            if (controller != null) {
-                controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
-                controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            }
-        } else {
-            @Suppress("DEPRECATION")
-            window.setFlags(
-                WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                WindowManager.LayoutParams.FLAG_FULLSCREEN
-            )
+        WindowInsetsControllerCompat(window, window.decorView).let { controller ->
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
     }
 }
