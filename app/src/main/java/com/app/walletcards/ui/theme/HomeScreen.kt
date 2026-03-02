@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MonetizationOn
@@ -471,7 +472,7 @@ fun PendingCardItem(card: com.app.walletcards.model.CardItem, onPayNowClick: () 
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Virtual Card for ${card.nameoncard}",
+                        text = LocalizationUtil.getString("virtual_card_for").format(card.nameoncard),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -608,7 +609,7 @@ fun CardDesign(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
-                    Text("Virtual Card", color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.labelLarge)
+                    Text(LocalizationUtil.getString("virtual_card"), color = Color.White.copy(alpha = 0.8f), style = MaterialTheme.typography.labelLarge)
                     Icon(
                         imageVector = Icons.Default.RemoveRedEye,
                         contentDescription = null,
@@ -831,12 +832,20 @@ fun ApplyForCardBottomSheet(
                 .navigationBarsPadding()
                 .imePadding()
         ) {
-            Text(
-                LocalizationUtil.getString("apply_for_card"),
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    LocalizationUtil.getString("apply_for_card"),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                IconButton(onClick = onDismiss) {
+                    Icon(imageVector = Icons.Default.Close, contentDescription = "Close")
+                }
+            }
 
             LazyColumn(
                 state = listState,

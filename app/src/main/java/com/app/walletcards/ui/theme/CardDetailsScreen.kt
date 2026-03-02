@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Shield
@@ -339,18 +340,33 @@ fun CardDetailsScreen(
                 containerColor = Color.White
             ) {
                 response?.data?.let { card ->
+                    var expandedCurrency by remember { mutableStateOf<String?>(null) }
+
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .navigationBarsPadding()
                             .padding(bottom = 32.dp)
                     ) {
-                        Text(
-                            LocalizationUtil.getString("deposit_crypto"),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp)
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 24.dp, end = 24.dp, top = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                LocalizationUtil.getString("deposit_crypto"),
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            IconButton(onClick = { isSheetOpen = false }) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close"
+                                )
+                            }
+                        }
                         
                         Text(
                             LocalizationUtil.getString("disclaimer_non_usdc"),
@@ -363,14 +379,32 @@ fun CardDetailsScreen(
                             contentPadding = PaddingValues(horizontal = 24.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            item { PremiumDepositCard("USDC", "Polygon Network", card.depositaddress?.removePrefix("USDC-POLYGON-"), Color(0xFF8247E5)) }
-                            item { PremiumDepositCard("BTC", "Bitcoin Network", card.btcdepositaddress?.removePrefix("BTC-"), Color(0xFFF7931A)) }
-                            item { PremiumDepositCard("ETH", "Ethereum Network", card.ethdepositaddress?.removePrefix("ETH-"), Color(0xFF627EEA)) }
-                            item { PremiumDepositCard("USDT", "BSC | BEP20", card.usdtdepositaddress?.removePrefix("USDT-BSC|BEP20-"), Color(0xFF26A17B)) }
-                            item { PremiumDepositCard("SOL", "Solana Network", card.soldepositaddress?.removePrefix("SOL-"), Color(0xFF14F195)) }
-                            item { PremiumDepositCard("BNB", "Binance Smart Chain", card.bnbdepositaddress?.removePrefix("BNB-BSC-"), Color(0xFFF3BA2F)) }
-                            item { PremiumDepositCard("XRP", "Ripple Network", card.xrpdepositaddress?.removePrefix("XRP-BSC-"), Color(0xFF23292F)) }
-                            item { PremiumDepositCard("PAXG", "Pax Gold Network", card.paxgdepositaddress?.removePrefix("PAXG-"), Color(0xFFE6B34B)) }
+                            val depositOptions = listOf(
+                                Triple("USDC", "Polygon Network", card.depositaddress?.removePrefix("USDC-POLYGON-")) to Color(0xFF8247E5),
+                                Triple("BTC", "Bitcoin Network", card.btcdepositaddress?.removePrefix("BTC-")) to Color(0xFFF7931A),
+                                Triple("ETH", "Ethereum Network", card.ethdepositaddress?.removePrefix("ETH-")) to Color(0xFF627EEA),
+                                Triple("USDT", "BSC | BEP20", card.usdtdepositaddress?.removePrefix("USDT-BSC|BEP20-")) to Color(0xFF26A17B),
+                                Triple("SOL", "Solana Network", card.soldepositaddress?.removePrefix("SOL-")) to Color(0xFF14F195),
+                                Triple("BNB", "Binance Smart Chain", card.bnbdepositaddress?.removePrefix("BNB-BSC-")) to Color(0xFFF3BA2F),
+                                Triple("XRP", "Ripple Network", card.xrpdepositaddress?.removePrefix("XRP-BSC-")) to Color(0xFF23292F),
+                                Triple("PAXG", "Pax Gold Network", card.paxgdepositaddress?.removePrefix("PAXG-")) to Color(0xFFE6B34B)
+                            )
+
+                            items(depositOptions) { (info, color) ->
+                                val (currency, network, address) = info
+                                if (!address.isNullOrBlank()) {
+                                    PremiumDepositCard(
+                                        currency = currency,
+                                        network = network,
+                                        address = address,
+                                        networkColor = color,
+                                        isExpanded = expandedCurrency == currency,
+                                        onExpandClick = {
+                                            expandedCurrency = if (expandedCurrency == currency) null else currency
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -580,11 +614,12 @@ fun PremiumDepositCard(
     currency: String,
     network: String,
     address: String?,
-    networkColor: Color
+    networkColor: Color,
+    isExpanded: Boolean,
+    onExpandClick: () -> Unit
 ) {
     if (address.isNullOrBlank()) return
 
-    var isExpanded by remember { mutableStateOf(false) }
     var isCopied by remember { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
@@ -592,7 +627,7 @@ fun PremiumDepositCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { isExpanded = !isExpanded },
+            .clickable { onExpandClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
     ) {
@@ -650,7 +685,7 @@ fun PremiumDepositCard(
                             tint = if (isCopied) Color(0xFF34A853) else Color.Gray
                         )
                     }
-                    IconButton(onClick = { isExpanded = !isExpanded }) {
+                    IconButton(onClick = { onExpandClick() }) {
                         Icon(
                             imageVector = Icons.Default.QrCode,
                             contentDescription = "QR Code",

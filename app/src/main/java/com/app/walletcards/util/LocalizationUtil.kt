@@ -122,7 +122,9 @@ object LocalizationUtil {
             "today" to "Today",
             "yesterday" to "Yesterday",
             "approval_failed" to "Approval failed. Please try again.",
-            "register_or_forgot" to "Register or Forgot Password?"
+            "register_or_forgot" to "Register or Forgot Password?",
+            "virtual_card_for" to "Virtual Card for %s",
+            "virtual_card" to "Virtual Card"
         ),
         "fr" to mapOf(
             "app_name" to "WalletCards",
@@ -206,7 +208,9 @@ object LocalizationUtil {
             "today" to "Aujourd'hui",
             "yesterday" to "Hier",
             "approval_failed" to "Échec de l'approbation. Veuillez réessayer.",
-            "register_or_forgot" to "S'inscrire ou Mot de passe oublié ?"
+            "register_or_forgot" to "S'inscrire ou Mot de passe oublié ?",
+            "virtual_card_for" to "Carte virtuelle pour %s",
+            "virtual_card" to "Carte virtuelle"
         ),
         "es" to mapOf(
             "app_name" to "WalletCards",
@@ -290,7 +294,9 @@ object LocalizationUtil {
             "today" to "Hoy",
             "yesterday" to "Ayer",
             "approval_failed" to "Error en la aprobación. Inténtelo de nuevo.",
-            "register_or_forgot" to "¿Registrarse o Olvidó su contraseña?"
+            "register_or_forgot" to "¿Registrarse o Olvidó su contraseña?",
+            "virtual_card_for" to "Tarjeta virtual para %s",
+            "virtual_card" to "Tarjeta virtual"
         ),
         "th" to mapOf(
             "app_name" to "WalletCards",
@@ -374,7 +380,9 @@ object LocalizationUtil {
             "today" to "วันนี้",
             "yesterday" to "เมื่อวาน",
             "approval_failed" to "การอนุมัติล้มเหลว โปรดลองอีกครั้ง",
-            "register_or_forgot" to "ลงทะเบียน หรือ ลืมรหัสผ่าน?"
+            "register_or_forgot" to "ลงทะเบียน หรือ ลืมรหัสผ่าน?",
+            "virtual_card_for" to "บัตรเสมือนสำหรับ %s",
+            "virtual_card" to "บัตรเสมือน"
         ),
         "pt" to mapOf(
             "app_name" to "WalletCards",
@@ -458,7 +466,9 @@ object LocalizationUtil {
             "today" to "Hoje",
             "yesterday" to "Ontem",
             "approval_failed" to "Falha na aprovação. Tente novamente.",
-            "register_or_forgot" to "Registrar ou Esqueceu a senha?"
+            "register_or_forgot" to "Registrar ou Esqueceu a senha?",
+            "virtual_card_for" to "Cartão virtual para %s",
+            "virtual_card" to "Cartão virtual"
         ),
         "ht" to mapOf(
             "app_name" to "WalletCards",
@@ -542,7 +552,9 @@ object LocalizationUtil {
             "today" to "Jodi a",
             "yesterday" to "Yè",
             "approval_failed" to "Apwobasyon an echwe. Tanpri reseye.",
-            "register_or_forgot" to "Enskri oswa Bliye modpas?"
+            "register_or_forgot" to "Enskri oswa Bliye modpas?",
+            "virtual_card_for" to "Kat vityèl pou %s",
+            "virtual_card" to "Kat vityèl"
         ),
         "nl" to mapOf(
             "app_name" to "WalletCards",
@@ -626,7 +638,9 @@ object LocalizationUtil {
             "today" to "Vandaag",
             "yesterday" to "Gisteren",
             "approval_failed" to "Goedkeuring mislukt. Probeer het opnieuw.",
-            "register_or_forgot" to "Registreren of Wachtwoord vergeten?"
+            "register_or_forgot" to "Registreren of Wachtwoord vergeten?",
+            "virtual_card_for" to "Virtuele kaart voor %s",
+            "virtual_card" to "Virtuele kaart"
         ),
         "he" to mapOf(
             "app_name" to "WalletCards",
@@ -706,11 +720,13 @@ object LocalizationUtil {
             "cardholder" to "בעל הכרטיס",
             "expiry" to "תוקף",
             "billing_address" to "כתובת לחיוב",
-            "crypto_deposit" to "הפקדת קריפטו",
+            "crypto_deposit" to "הפקדת קריפטو",
             "today" to "היום",
             "yesterday" to "אתמול",
             "approval_failed" to "האישור נכשל. אנא נסה שוב.",
-            "register_or_forgot" to "הרשמה או שכחת סיסמה?"
+            "register_or_forgot" to "הרשמה או שכחת סיסמה?",
+            "virtual_card_for" to "כרטיס וירטואלי עבור %s",
+            "virtual_card" to "כרטיס וירטואלי"
         ),
         "ar" to mapOf(
             "app_name" to "WalletCards",
@@ -794,7 +810,9 @@ object LocalizationUtil {
             "today" to "اليوم",
             "yesterday" to "أمس",
             "approval_failed" to "فشل الموافقة. يرجى المحاولة مرة أخرى.",
-            "register_or_forgot" to "تسجيل أو نسيت كلمة المرور؟"
+            "register_or_forgot" to "تسجيل أو نسيت كلمة المرور؟",
+            "virtual_card_for" to "بطاقة افتراضية لـ %s",
+            "virtual_card" to "بطاقة افتراضية"
         )
     )
 

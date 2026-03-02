@@ -1,6 +1,10 @@
 package com.app.walletcards
 
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowInsets
+import android.view.WindowInsetsController
+import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.view.WindowCompat
 import androidx.navigation.compose.*
 import com.app.walletcards.ui.theme.HomeScreen
 import com.app.walletcards.ui.theme.LoginScreen
@@ -36,6 +41,9 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
 
         // Initialize Firebase
         FirebaseApp.initializeApp(this)
+
+        // Make the app fullscreen
+        hideSystemUI()
 
         setContent {
             val context = LocalContext.current
@@ -112,6 +120,24 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private fun hideSystemUI() {
+        // This will hide the status bar and navigation bar
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val controller = window.insetsController
+            if (controller != null) {
+                controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN
+            )
         }
     }
 }
