@@ -228,8 +228,8 @@ class _CardDetailsScreenState extends State<CardDetailsScreen> with SingleTicker
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (context) => _PremiumDepositSheet(card: card),
     );
   }
@@ -409,36 +409,114 @@ class _FlippableCardState extends State<_FlippableCard> with SingleTickerProvide
   }
 }
 
-class _PremiumDepositSheet extends StatelessWidget {
+class _PremiumDepositSheet extends StatefulWidget {
   final CardDetails card;
   const _PremiumDepositSheet({required this.card});
+
+  @override
+  State<_PremiumDepositSheet> createState() => _PremiumDepositSheetState();
+}
+
+class _PremiumDepositSheetState extends State<_PremiumDepositSheet> {
+  String? _expandedCurrency;
+
+  void _toggleCurrency(String currency) {
+    setState(() {
+      if (_expandedCurrency == currency) {
+        _expandedCurrency = null;
+      } else {
+        _expandedCurrency = currency;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final localization = context.watch<LocalizationUtil>();
     
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 32, top: 24, left: 24, right: 24),
+    return Container(
+      height: MediaQuery.of(context).size.height,
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 16, top: 16, left: 24, right: 24),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(localization.getString("deposit_crypto"), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(localization.getString("deposit_crypto"), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+            ],
+          ),
           const SizedBox(height: 8),
           Text(localization.getString("disclaimer_non_usdc"), style: const TextStyle(color: Colors.red, fontSize: 12)),
           const SizedBox(height: 24),
-          SizedBox(
-            height: 400,
+          Expanded(
             child: ListView(
               children: [
-                _PremiumDepositCard(currency: "USDC", network: "Polygon Network", address: card.depositaddress?.replaceFirst("USDC-POLYGON-", ""), color: const Color(0xFF8247E5)),
-                _PremiumDepositCard(currency: "BTC", network: "Bitcoin Network", address: card.btcdepositaddress?.replaceFirst("BTC-", ""), color: const Color(0xFFF7931A)),
-                _PremiumDepositCard(currency: "ETH", network: "Ethereum Network", address: card.ethdepositaddress?.replaceFirst("ETH-", ""), color: const Color(0xFF627EEA)),
-                _PremiumDepositCard(currency: "USDT", network: "BSC | BEP20", address: card.usdtdepositaddress?.replaceFirst("USDT-BSC|BEP20-", ""), color: const Color(0xFF26A17B)),
-                _PremiumDepositCard(currency: "SOL", network: "Solana Network", address: card.soldepositaddress?.replaceFirst("SOL-", ""), color: const Color(0xFF14F195)),
-                _PremiumDepositCard(currency: "BNB", network: "Binance Smart Chain", address: card.bnbdepositaddress?.replaceFirst("BNB-BSC-", ""), color: const Color(0xFFF3BA2F)),
-                _PremiumDepositCard(currency: "XRP", network: "Ripple Network", address: card.xrpdepositaddress?.replaceFirst("XRP-BSC-", ""), color: const Color(0xFF23292F)),
-                _PremiumDepositCard(currency: "PAXG", network: "Pax Gold Network", address: card.paxgdepositaddress?.replaceFirst("PAXG-", ""), color: const Color(0xFFE6B34B)),
+                _PremiumDepositCard(
+                  currency: "USDC", 
+                  network: "Polygon Network", 
+                  address: widget.card.depositaddress?.replaceFirst("USDC-POLYGON-", ""), 
+                  color: const Color(0xFF8247E5),
+                  isExpanded: _expandedCurrency == "USDC",
+                  onToggle: () => _toggleCurrency("USDC"),
+                ),
+                _PremiumDepositCard(
+                  currency: "BTC", 
+                  network: "Bitcoin Network", 
+                  address: widget.card.btcdepositaddress?.replaceFirst("BTC-", ""), 
+                  color: const Color(0xFFF7931A),
+                  isExpanded: _expandedCurrency == "BTC",
+                  onToggle: () => _toggleCurrency("BTC"),
+                ),
+                _PremiumDepositCard(
+                  currency: "ETH", 
+                  network: "Ethereum Network", 
+                  address: widget.card.ethdepositaddress?.replaceFirst("ETH-", ""), 
+                  color: const Color(0xFF627EEA),
+                  isExpanded: _expandedCurrency == "ETH",
+                  onToggle: () => _toggleCurrency("ETH"),
+                ),
+                _PremiumDepositCard(
+                  currency: "USDT", 
+                  network: "BSC | BEP20", 
+                  address: widget.card.usdtdepositaddress?.replaceFirst("USDT-BSC|BEP20-", ""), 
+                  color: const Color(0xFF26A17B),
+                  isExpanded: _expandedCurrency == "USDT",
+                  onToggle: () => _toggleCurrency("USDT"),
+                ),
+                _PremiumDepositCard(
+                  currency: "SOL", 
+                  network: "Solana Network", 
+                  address: widget.card.soldepositaddress?.replaceFirst("SOL-", ""), 
+                  color: const Color(0xFF14F195),
+                  isExpanded: _expandedCurrency == "SOL",
+                  onToggle: () => _toggleCurrency("SOL"),
+                ),
+                _PremiumDepositCard(
+                  currency: "BNB", 
+                  network: "Binance Smart Chain", 
+                  address: widget.card.bnbdepositaddress?.replaceFirst("BNB-BSC-", ""), 
+                  color: const Color(0xFFF3BA2F),
+                  isExpanded: _expandedCurrency == "BNB",
+                  onToggle: () => _toggleCurrency("BNB"),
+                ),
+                _PremiumDepositCard(
+                  currency: "XRP", 
+                  network: "Ripple Network", 
+                  address: widget.card.xrpdepositaddress?.replaceFirst("XRP-BSC-", ""), 
+                  color: const Color(0xFF23292F),
+                  isExpanded: _expandedCurrency == "XRP",
+                  onToggle: () => _toggleCurrency("XRP"),
+                ),
+                _PremiumDepositCard(
+                  currency: "PAXG", 
+                  network: "Pax Gold Network", 
+                  address: widget.card.paxgdepositaddress?.replaceFirst("PAXG-", ""), 
+                  color: const Color(0xFFE6B34B),
+                  isExpanded: _expandedCurrency == "PAXG",
+                  onToggle: () => _toggleCurrency("PAXG"),
+                ),
               ],
             ),
           ),
@@ -448,24 +526,26 @@ class _PremiumDepositSheet extends StatelessWidget {
   }
 }
 
-class _PremiumDepositCard extends StatefulWidget {
+class _PremiumDepositCard extends StatelessWidget {
   final String currency;
   final String network;
   final String? address;
   final Color color;
+  final bool isExpanded;
+  final VoidCallback onToggle;
 
-  const _PremiumDepositCard({required this.currency, required this.network, this.address, required this.color});
-
-  @override
-  State<_PremiumDepositCard> createState() => _PremiumDepositCardState();
-}
-
-class _PremiumDepositCardState extends State<_PremiumDepositCard> {
-  bool _isExpanded = false;
+  const _PremiumDepositCard({
+    required this.currency, 
+    required this.network, 
+    this.address, 
+    required this.color,
+    required this.isExpanded,
+    required this.onToggle,
+  });
 
   @override
   Widget build(BuildContext context) {
-    if (widget.address == null || widget.address!.isEmpty) return const SizedBox.shrink();
+    if (address == null || address!.isEmpty) return const SizedBox.shrink();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -474,31 +554,31 @@ class _PremiumDepositCardState extends State<_PremiumDepositCard> {
       child: Column(
         children: [
           ListTile(
-            leading: CircleAvatar(backgroundColor: widget.color.withOpacity(0.1), child: Text(widget.currency[0], style: TextStyle(color: widget.color, fontWeight: FontWeight.bold))),
-            title: Text(widget.currency, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text(widget.network, style: TextStyle(color: widget.color, fontSize: 10)),
+            leading: CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Text(currency[0], style: TextStyle(color: color, fontWeight: FontWeight.bold))),
+            title: Text(currency, style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(network, style: TextStyle(color: color, fontSize: 10)),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(icon: const Icon(Icons.copy, size: 20), onPressed: () {
-                  Clipboard.setData(ClipboardData(text: widget.address!));
+                  Clipboard.setData(ClipboardData(text: address!));
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Address copied")));
                 }),
-                Icon(_isExpanded ? Icons.expand_less : Icons.expand_more),
+                Icon(isExpanded ? Icons.expand_less : Icons.expand_more),
               ],
             ),
-            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            onTap: onToggle,
           ),
-          if (_isExpanded)
+          if (isExpanded)
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  Text(widget.address!, style: const TextStyle(fontSize: 12, fontFamily: 'monospace'), textAlign: TextAlign.center),
+                  Text(address!, style: const TextStyle(fontSize: 12, fontFamily: 'monospace'), textAlign: TextAlign.center),
                   const SizedBox(height: 16),
-                  QrImageView(data: widget.address!, size: 150),
+                  QrImageView(data: address!, size: 150),
                   const SizedBox(height: 8),
-                  Text("Send only ${widget.currency} via ${widget.network}", style: const TextStyle(color: Colors.red, fontSize: 10)),
+                  Text("Send only $currency via $network", style: const TextStyle(color: Colors.red, fontSize: 10)),
                 ],
               ),
             ),

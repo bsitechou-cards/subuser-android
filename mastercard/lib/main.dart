@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'core/utils/localization_util.dart';
 import 'features/auth/login_screen.dart';
@@ -11,6 +12,9 @@ import 'features/shared/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Enable immersive full-screen mode
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   
   if (kIsWeb) {
     await Firebase.initializeApp(
