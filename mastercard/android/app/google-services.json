@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "965024676269",
+    "project_id": "virtualcards-21968",
+    "storage_bucket": "virtualcards-21968.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:965024676269:android:064d39875c06a3f7ea8924",
+        "android_client_info": {
+          "package_name": "com.app.walletcards"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCaXT2muC1XbIkjL9iOAkwWJxUYMfEFfxM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
