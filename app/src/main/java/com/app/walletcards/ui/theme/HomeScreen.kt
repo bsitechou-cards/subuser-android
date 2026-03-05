@@ -1,5 +1,10 @@
 package com.app.walletcards.ui.theme
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.biometric.BiometricManager
@@ -31,12 +36,15 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.RemoveRedEye
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -299,7 +307,8 @@ fun HomeScreen(
             onLogout = {
                 isSettingsOpen = false
                 onLogout()
-            }
+            },
+            userEmail = userEmail
         )
     }
 
@@ -322,10 +331,13 @@ fun HomeScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsBottomSheet(onDismiss: () -> Unit, onLogout: () -> Unit) {
+fun SettingsBottomSheet(onDismiss: () -> Unit, onLogout: () -> Unit, userEmail: String) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showLanguagePicker by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showAccountDeletedDialog by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -354,6 +366,57 @@ fun SettingsBottomSheet(onDismiss: () -> Unit, onLogout: () -> Unit) {
                 },
                 leadingContent = { Icon(Icons.Default.Language, contentDescription = null) },
                 modifier = Modifier.clickable { showLanguagePicker = true }
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
+
+            // Share App
+            ListItem(
+                headlineContent = { Text(LocalizationUtil.getString("share_app")) },
+                leadingContent = { Icon(Icons.Default.Share, contentDescription = null) },
+                modifier = Modifier.clickable {
+                    val shareText = LocalizationUtil.getString("share_text")
+                    val sendIntent: Intent = Intent().apply {
+                        action = Intent.ACTION_SEND
+                        putExtra(Intent.EXTRA_TEXT, shareText)
+                        type = "text/plain"
+                    }
+                    val shareIntent = Intent.createChooser(sendIntent, null)
+                    context.startActivity(shareIntent)
+                }
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
+
+            // Review App
+            ListItem(
+                headlineContent = { Text(LocalizationUtil.getString("review_app")) },
+                leadingContent = { Icon(Icons.Default.Star, contentDescription = null) },
+                modifier = Modifier.clickable {
+                    val suggestedReview = "Best Virtual Mastercards for Crypto offramp"
+                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    val clip = ClipData.newPlainText("suggested_review", suggestedReview)
+                    clipboard.setPrimaryClip(clip)
+                    Toast.makeText(context, "Review text copied to clipboard!", Toast.LENGTH_SHORT).show()
+
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        data = Uri.parse("market://details?id=${context.packageName}")
+                    }
+                    try {
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}")))
+                    }
+                }
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
+
+            // Delete Account Option
+            ListItem(
+                headlineContent = { Text(LocalizationUtil.getString("delete_account"), color = Color.Gray) },
+                leadingContent = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Gray) },
+                modifier = Modifier.clickable { showDeleteConfirmation = true }
             )
 
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), thickness = 0.5.dp)
@@ -392,6 +455,53 @@ fun SettingsBottomSheet(onDismiss: () -> Unit, onLogout: () -> Unit) {
                 }
             },
             confirmButton = {}
+        )
+    }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text(LocalizationUtil.getString("are_you_sure")) },
+            text = { Text(LocalizationUtil.getString("delete_disclaimer")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirmation = false
+                    scope.launch {
+                        val response = CardApiService.deletesubuser(userEmail)
+                        if (response?.code == "200") {
+                            showAccountDeletedDialog = true
+                        } else {
+                            Toast.makeText(context, response?.message ?: "Error deleting account", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }) {
+                    Text(LocalizationUtil.getString("yes"), color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text(LocalizationUtil.getString("no"))
+                }
+            }
+        )
+    }
+
+    if (showAccountDeletedDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Prevent dismiss */ },
+            title = { Text("Account Deleted") },
+            text = { Text("Your account has been successfully deleted.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showAccountDeletedDialog = false
+                    val user = FirebaseAuth.getInstance().currentUser
+                    user?.delete()?.addOnCompleteListener {
+                        onLogout()
+                    }
+                }) {
+                    Text("OK")
+                }
+            }
         )
     }
 }

@@ -19,8 +19,11 @@ data class CardDetails(
     val nameoncard: String,
     val balance: Double,
     val status: String,
+    val subuserfee: Double? = null,
+    val isaddon: Int? = 0,
     val transactions: TransactionsWrapper,
     val deposits: List<Deposit>,
+    val addoncard: List<AddonCard>? = null,
     val depositaddress: String? = null,
     val btcdepositaddress: String? = null,
     val ethdepositaddress: String? = null,
@@ -34,6 +37,16 @@ data class CardDetails(
     val state: String? = null,
     val country: String? = null,
     val postalCode: String? = null
+)
+
+@Serializable
+data class AddonCard(
+    val cardid: String,
+    val lastfour: String,
+    val nameoncard: String,
+    val useremail: String,
+    val brand: String,
+    val type: String
 )
 
 @Serializable

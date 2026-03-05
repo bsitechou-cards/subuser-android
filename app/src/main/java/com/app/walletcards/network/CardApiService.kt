@@ -114,8 +114,10 @@ object CardApiService {
                     .build()
 
                 val response = client.newCall(request).execute()
+                val responseBody = response.body?.string()
+                Log.d("CardApiService", "getAllDigitalCards response: $responseBody")
 
-                response.body?.string()?.let {
+                responseBody?.let {
                     json.decodeFromString(CardResponse.serializer(), it)
                 }
 
@@ -148,8 +150,10 @@ object CardApiService {
                     .build()
 
                 val response = client.newCall(request).execute()
+                val responseBody = response.body?.string()
+                Log.d("CardApiService", "getDigitalCardDetails response: $responseBody")
 
-                response.body?.string()?.let {
+                responseBody?.let {
                     json.decodeFromString(CardDetailsResponse.serializer(), it)
                 }
 
@@ -182,8 +186,10 @@ object CardApiService {
                     .build()
 
                 val response = client.newCall(request).execute()
+                val responseBody = response.body?.string()
+                Log.d("CardApiService", "check3ds response: $responseBody")
 
-                response.body?.string()?.let {
+                responseBody?.let {
                     json.decodeFromString(ThreeDSResponse.serializer(), it)
                 }
 
@@ -285,6 +291,77 @@ object CardApiService {
                 val response = client.newCall(request).execute()
                 val responseBody = response.body?.string()
                 Log.d("CardApiService", "unblockDigitalCard response: $responseBody")
+
+                responseBody?.let {
+                    json.decodeFromString(ApplyCardResponse.serializer(), it)
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
+    }
+
+    suspend fun deletesubuser(userEmail: String): ApplyCardResponse? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val jsonBody = """
+                {
+                    "useremail": "$userEmail"
+                }
+            """.trimIndent()
+
+                val requestBody =
+                    jsonBody.toRequestBody("application/json".toMediaType())
+
+                val request = Request.Builder()
+                    .url(ApiConfig.BASE_URL + "deletesubuser")
+                    .post(requestBody)
+                    .addHeader("publickey", ApiConfig.PUBLIC_KEY)
+                    .addHeader("secretkey", ApiConfig.SECRET_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .build()
+
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string()
+                Log.d("CardApiService", "deletesubuser response: $responseBody")
+
+                responseBody?.let {
+                    json.decodeFromString(ApplyCardResponse.serializer(), it)
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
+    }
+
+    suspend fun createAddonUser(userEmail: String, cardId: String): ApplyCardResponse? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val jsonBody = """
+                {
+                    "useremail": "$userEmail",
+                    "cardid": "$cardId"
+                }
+            """.trimIndent()
+
+                val requestBody =
+                    jsonBody.toRequestBody("application/json".toMediaType())
+
+                val request = Request.Builder()
+                    .url(ApiConfig.BASE_URL + "subusercreateaddonuser")
+                    .post(requestBody)
+                    .addHeader("publickey", ApiConfig.PUBLIC_KEY)
+                    .addHeader("secretkey", ApiConfig.SECRET_KEY)
+                    .addHeader("Content-Type", "application/json")
+                    .build()
+
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string()
+                Log.d("CardApiService", "createAddonUser response: $responseBody")
 
                 responseBody?.let {
                     json.decodeFromString(ApplyCardResponse.serializer(), it)

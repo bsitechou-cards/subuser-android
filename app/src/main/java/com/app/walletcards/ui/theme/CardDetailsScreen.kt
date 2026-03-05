@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +20,7 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddCard
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -82,17 +84,19 @@ fun CardDetailsScreen(
     var isLoading by remember { mutableStateOf(true) }
     var isChecking3ds by remember { mutableStateOf(false) }
     var isTogglingBlock by remember { mutableStateOf(false) }
+    var isApplyingAddon by remember { mutableStateOf(false) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var isSheetOpen by remember { mutableStateOf(false) }
     var is3dsSheetOpen by remember { mutableStateOf(false) }
+    var isAddonSheetOpen by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
 
     // Load card details
-    LaunchedEffect(refreshTrigger) {
+    LaunchedEffect(cardId, refreshTrigger) {
         isLoading = true
         scope.launch {
             response = CardApiService.getDigitalCardDetails(userEmail, cardId)
@@ -139,12 +143,22 @@ fun CardDetailsScreen(
                     )
                 }
 
-                QuickActionItem(
-                    icon = Icons.AutoMirrored.Filled.ArrowBack,
-                    label = LocalizationUtil.getString("back"),
-                    size = 40.dp,
-                    onClick = { navController.popBackStack() }
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (response?.data?.isaddon != 1) {
+                        DetailsQuickActionItem(
+                            icon = Icons.Default.AddCard,
+                            label = LocalizationUtil.getString("apply_addon"),
+                            size = 38.dp,
+                            onClick = { isAddonSheetOpen = true }
+                        )
+                    }
+                    DetailsQuickActionItem(
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
+                        label = LocalizationUtil.getString("back"),
+                        size = 38.dp,
+                        onClick = { navController.popBackStack() }
+                    )
+                }
             }
         }
 
@@ -267,10 +281,20 @@ fun CardDetailsScreen(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        val tabTitles = listOf(
-                            LocalizationUtil.getString("transactions"),
-                            LocalizationUtil.getString("deposits")
-                        )
+                        val tabTitles = remember(card.isaddon) {
+                            if (card.isaddon == 1) {
+                                listOf(
+                                    LocalizationUtil.getString("transactions"),
+                                    LocalizationUtil.getString("deposits")
+                                )
+                            } else {
+                                listOf(
+                                    LocalizationUtil.getString("transactions"),
+                                    LocalizationUtil.getString("deposits"),
+                                    LocalizationUtil.getString("addon_cards")
+                                )
+                            }
+                        }
                         val pagerState = rememberPagerState { tabTitles.size }
 
                         Column(modifier = Modifier.fillMaxSize()) {
@@ -317,6 +341,15 @@ fun CardDetailsScreen(
                                             groupItemsByDate(card.deposits) { it.createdAt }
                                         }
                                         DepositList(groupedDeposits)
+                                    }
+                                    2 -> {
+                                        AddonCardList(
+                                            addonCards = card.addoncard ?: emptyList(),
+                                            onCardClick = { clickedCardId ->
+                                                navController.navigate("cardDetails/$clickedCardId")
+                                            },
+                                            onApplyClick = { isAddonSheetOpen = true }
+                                        )
                                     }
                                 }
                             }
@@ -411,6 +444,83 @@ fun CardDetailsScreen(
             }
         }
 
+        if (isAddonSheetOpen) {
+            ModalBottomSheet(
+                onDismissRequest = { isAddonSheetOpen = false },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                containerColor = Color.White
+            ) {
+                response?.data?.let { card ->
+                    val fee = card.subuserfee ?: 0.0
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            LocalizationUtil.getString("apply_for_addon"),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        Spacer(modifier = Modifier.height(32.dp))
+                        
+                        Text(
+                            text = "$${"%.2f".format(fee)}",
+                            style = MaterialTheme.typography.displayMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text(
+                            text = LocalizationUtil.getString("addon_info"),
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Gray
+                        )
+                        
+                        Spacer(modifier = Modifier.height(48.dp))
+                        
+                        Button(
+                            onClick = {
+                                if (card.balance < fee) {
+                                    Toast.makeText(context, LocalizationUtil.getString("insufficient_balance"), Toast.LENGTH_LONG).show()
+                                } else {
+                                    scope.launch {
+                                        isApplyingAddon = true
+                                        val addonResponse = CardApiService.createAddonUser(userEmail, cardId)
+                                        if (addonResponse?.code == "200") {
+                                            Toast.makeText(context, LocalizationUtil.getString("addon_issued"), Toast.LENGTH_LONG).show()
+                                            navController.navigate("home") {
+                                                popUpTo("home") { inclusive = true }
+                                            }
+                                        } else {
+                                            Toast.makeText(context, addonResponse?.message ?: "Error", Toast.LENGTH_LONG).show()
+                                            isAddonSheetOpen = false
+                                        }
+                                        isApplyingAddon = false
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isApplyingAddon
+                        ) {
+                            if (isApplyingAddon) {
+                                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                            } else {
+                                Text(LocalizationUtil.getString("continue"))
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
+            }
+        }
+
         if (is3dsSheetOpen) {
             threeDSResponse?.let {
                 ThreeDSBottomSheet(it, cardId, userEmail) { is3dsSheetOpen = false }
@@ -458,6 +568,93 @@ fun DepositList(groupedDeposits: Map<String, List<Deposit>>) {
             }
         }
         item { Spacer(modifier = Modifier.height(80.dp)) }
+    }
+}
+
+@Composable
+fun AddonCardList(
+    addonCards: List<com.app.walletcards.model.AddonCard>,
+    onCardClick: (String) -> Unit,
+    onApplyClick: () -> Unit
+) {
+    if (addonCards.isEmpty()) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                LocalizationUtil.getString("no_addon_cards"),
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.Gray,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(onClick = onApplyClick) {
+                Text(LocalizationUtil.getString("apply_addon"))
+            }
+        }
+    } else {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(addonCards) { card ->
+                AddonCardRow(card, onCardClick)
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    thickness = 0.5.dp,
+                    color = Color.LightGray.copy(alpha = 0.5f)
+                )
+            }
+            item { Spacer(modifier = Modifier.height(80.dp)) }
+        }
+    }
+}
+
+@Composable
+fun AddonCardRow(card: com.app.walletcards.model.AddonCard, onCardClick: (String) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .clickable { onCardClick(card.cardid) }
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFF1F3F4)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.AddCard,
+                contentDescription = null,
+                tint = Color.DarkGray,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = card.nameoncard,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "**** **** **** ${card.lastfour}",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+        }
+
+        Icon(
+            painter = painterResource(id = R.drawable.mastercard_logo),
+            contentDescription = null,
+            modifier = Modifier.size(32.dp),
+            tint = Color.Unspecified
+        )
     }
 }
 
@@ -809,6 +1006,24 @@ fun FlippableCard(card: CardDetails) {
                     )
                 }
 
+                // Add-on Badge
+                if (card.isaddon == 1) {
+                    Surface(
+                        color = Color.White,
+                        shape = RoundedCornerShape(4.dp),
+                        modifier = Modifier.align(Alignment.Start)
+                    ) {
+                        Text(
+                            text = LocalizationUtil.getString("addon_card_badge"),
+                            color = Color.Black,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
                 // Card number
                 Text(
                     text = card.card_number.chunked(4).joinToString(" "),
@@ -823,7 +1038,12 @@ fun FlippableCard(card: CardDetails) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text(LocalizationUtil.getString("cardholder"), color = Color.LightGray, fontSize = 12.sp)
+                        val cardHolderLabel = if (card.isaddon == 1) {
+                            LocalizationUtil.getString("addon_cardholder")
+                        } else {
+                            LocalizationUtil.getString("cardholder")
+                        }
+                        Text(cardHolderLabel, color = Color.LightGray, fontSize = 12.sp)
                         Text(
                             card.nameoncard.uppercase(),
                             color = Color.White,
@@ -906,5 +1126,41 @@ fun FlippableCard(card: CardDetails) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun DetailsQuickActionItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector, 
+    label: String, 
+    size: androidx.compose.ui.unit.Dp = 56.dp,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { onClick() }
+    ) {
+        Surface(
+            modifier = Modifier.size(size),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primary,
+            tonalElevation = 4.dp
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon, 
+                    contentDescription = label, 
+                    tint = Color.White,
+                    modifier = Modifier.size(size * 0.5f)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label, 
+            style = MaterialTheme.typography.labelSmall, 
+            fontWeight = FontWeight.Medium,
+            fontSize = 10.sp
+        )
     }
 }
